@@ -1,0 +1,24 @@
+name: Build quantization tools
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the native replay and upstream fixture tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/qt"
+          research/quant/build.sh "$RUNNER_TEMP/qt/replay"
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$RUNNER_TEMP/qt" bed dump priors || { tail -60 "$RUNNER_TEMP"/qt/build_*.log; exit 1; }
+          cd "$RUNNER_TEMP/qt"
+          tar czf quant-tools.tar.gz replay cmix_bed cmix_dump cmix_priors
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-quant-tools
+          path: ${{ runner.temp }}/qt/quant-tools.tar.gz
+          retention-days: 14

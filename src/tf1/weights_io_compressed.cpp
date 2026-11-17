@@ -747,9 +747,14 @@ WeightsFile WeightsFile::load_compressed(const char* path) {
   // reader decodes (it was a second read of the file in the engine)
   unsigned long long h = 14695981039346656037ULL;
   for (size_t i = 0; i < n; i++) h = (h ^ buf[i]) * 1099511628211ULL;
+#ifdef NEIF_QUANT_REPLAY
+  extern unsigned long long research_fingerprint;
+  if (n < 24 || std::memcmp(buf, "FX2TFWP5", 8) || h != research_fingerprint)
+    msg_stop(207);
+#else
   if (h != 0xaec368ac6a568632ULL)
-    msg_stop(207)
-;
+    msg_stop(207);
+#endif
   Reader r{buf + 8, n - 8, path};   // behind the magic (fixed by the fingerprint)
   WeightsFile wf = LoadId(r, path);
   std::free(buf);
