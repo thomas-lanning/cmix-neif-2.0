@@ -41,4 +41,14 @@ The identity control must return zero on every window. A run records actual pack
 
 The [rANS comparison](ans/README.md) tests an alternative entropy coder against the release arithmetic coder on the same published bitstream.
 
-The [baseline build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44198808592) reproduced the published compressor hash. The [native research tools build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44199917904) produced the replay and three preparation tools.
+The [baseline build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44198808592) reproduced the published compressor hash. A [second release build with the research code present](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44201814970) reproduced it again. The [native research tools build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44199917904) produced the replay and three preparation tools.
+
+The initial C40 suite contains 42,238 fed rows and 34,706 scored targets across twelve article windows. One native pass through all windows took 15.53 seconds after the reference was cached. Timing excludes one-time fixture generation and candidate export. Replaying the original file returned zero on every window. A separate export with zero changed rows reproduced all 3,744,629 published weight bytes.
+
+| Final MLP rows coarsened | Packed weights saved | Discovery proxy Δ | Confirmation proxy Δ |
+| ---: | ---: | ---: | ---: |
+| 12.5% | 305 B | -6,346 B | +13,867 B |
+| 25% | 683 B | -10,396 B | +14,916 B |
+| 50% | 1,656 B | -12,065 B | +12,599 B |
+
+Negative proxy values predict a smaller entry. The full-codec effects are unmeasured. The [pilot data](quant/c40-pilot.json) include the exact candidate and suite hashes, model losses and per-window deltas.

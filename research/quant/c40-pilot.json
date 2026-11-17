@@ -1,0 +1,105 @@
+{
+  "suite_sha256": "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b",
+  "selection": "40000000",
+  "rows": 42238,
+  "targets": 34706,
+  "windows": 12,
+  "experiment_commit": "c5752b42a7d001ce87b8d416712e5dfc7f692318",
+  "replay_sha256": "fcaaae23117186adf210c362ac636026e2d96e6712d95cb298b1a8fd84b1c7ad",
+  "reference_bits": 47180.604942443795,
+  "identity_pass_seconds": 15.53,
+  "trials": [
+    {
+      "label": "identity",
+      "candidate_bytes": 3744629,
+      "candidate_sha256": "729694cba4969b7d833686ed3f597ff04d3b226da849d5f8004ec020a0ed9563",
+      "twice_weight_delta": 0,
+      "search_proxy_bytes": 0.0,
+      "confirmation_proxy_bytes": 0.0,
+      "proxy_delta_bytes": 0.0,
+      "bits_per_target_delta_by_window": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "one-eighth-pilot",
+      "candidate_bytes": 3744324,
+      "candidate_sha256": "786240660d20774914e560939e81e0d35686ade8e0ffeacae3a344c066970537",
+      "twice_weight_delta": -610,
+      "search_proxy_bytes": -6345.78312957629,
+      "confirmation_proxy_bytes": 13867.058451355362,
+      "proxy_delta_bytes": 3760.6376608895353,
+      "bits_per_target_delta_by_window": [
+        -0.000329634,
+        3.7916e-05,
+        1.1254e-05,
+        -7.294e-06,
+        0.000553688,
+        0.000395707,
+        -0.000380129,
+        0.000401963,
+        -0.000791092,
+        0.000260657,
+        0.000370926,
+        0.000337074
+      ]
+    },
+    {
+      "label": "row fraction 0.25",
+      "candidate_bytes": 3743946,
+      "candidate_sha256": "e070603e0d4859cb06b20cc43f94d36302b68d3fe08fc00a3d9dad55bc8f63dc",
+      "twice_weight_delta": -1366,
+      "search_proxy_bytes": -10395.598782513422,
+      "confirmation_proxy_bytes": 14915.754701275793,
+      "proxy_delta_bytes": 2260.0779593811862,
+      "bits_per_target_delta_by_window": [
+        -0.000236053,
+        0.000297849,
+        3.0245e-05,
+        -2.0986e-05,
+        0.000562082,
+        6.2164e-05,
+        -0.000666997,
+        0.000687818,
+        -0.001100804,
+        0.000599675,
+        0.000522091,
+        -2.2729e-05
+      ]
+    },
+    {
+      "label": "row fraction 0.5",
+      "candidate_bytes": 3742973,
+      "candidate_sha256": "216e886326d840fe5c532973b6c7eb92dec41a7d569f783b9e650e0ac820f573",
+      "twice_weight_delta": -3312,
+      "search_proxy_bytes": -12064.619811762297,
+      "confirmation_proxy_bytes": 12598.573687591608,
+      "proxy_delta_bytes": 266.9769379146551,
+      "bits_per_target_delta_by_window": [
+        -0.000389953,
+        -0.000480156,
+        -0.000124831,
+        0.000126047,
+        0.000449917,
+        0.000437492,
+        -0.000106849,
+        0.001150289,
+        -0.001397895,
+        1.028e-06,
+        0.000707459,
+        0.000332527
+      ]
+    }
+  ]
+}

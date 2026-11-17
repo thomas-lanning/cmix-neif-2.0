@@ -1,5 +1,7 @@
 # cmix-neif-2.0: a Hutter Prize entry
 
+This fork reproduces the upstream entry and tests quantization and rANS. Start with the [research setup and measured results](research/README.md) and the [prize rules](research/prize-rules.md). The submission described below is Marcus Wölk's upstream entry.
+
 **Submitted by Marcus Wölk, Ellefeld, Germany.**
 
 * Date of submission: 30 October 2026

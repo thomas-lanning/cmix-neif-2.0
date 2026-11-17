@@ -11,6 +11,8 @@ The evaluator, fixture generator, scoring formula, baseline weights and accounti
 
 ## Running repeated experiments
 
+This setup follows Karpathy's editable experiment program and fixed evaluator. A command-based controller can read the printed `METRIC` lines. The same campaign can also run from a coding agent with these instructions. [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) · [pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) · [Claude Autoresearch](https://github.com/uditgoenka/autoresearch)
+
 Start the agent in a dedicated experiment branch with this file as its instruction. Give it the replay binary, fixture directory, persistent results directory and a budget of trials or wall time. Reproduce the identity result and run a zero-fraction export once with `loop.py --fractions 0` to measure the cost of reserializing the published tensors. Record the starting commit and both controls in the campaign log.
 
 After each sweep, inspect `trials.jsonl` and `sweep.jsonl`. Choose one new hypothesis from the results, write the rationale before running it, edit the exporter in the experiment branch, commit it, and rerun the same evaluator. Record the commit, result and keep/discard decision. Compare a change with the best retained model as well as the published reference. Keep the generator snapshot and evidence for discarded trials. Continue to the supplied budget or until an environmental failure prevents measurement. If a change works only on the discovery windows, keep the incumbent. The three row fractions in the first sweep seed this process.
