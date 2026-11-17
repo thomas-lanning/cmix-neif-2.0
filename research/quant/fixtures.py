@@ -95,9 +95,11 @@ def main():
             break
         else:
             raise ValueError(f"no usable document near {offset}")
-    (args.output / "manifest.json").write_text(json.dumps(dict(format=1, selection=args.selection,
+    manifest = args.output / "manifest.tmp"
+    manifest.write_text(json.dumps(dict(format=1, selection=args.selection,
         input_sha256="159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc",
         windows=windows), indent=2) + "\n")
+    manifest.replace(args.output / "manifest.json")
 
 
 if __name__ == "__main__":
