@@ -8,3 +8,9 @@ Read [the prize rules](../prize-rules.md) and the [operating instructions](../RE
 4. For promotion, freeze the candidate, run a disjoint full-stream suite and then embed it in both halves of a release build. Restamp both weight checks against the actual bytes. Compression and decoding must agree on a clean x86 host. Score both executables and required arguments. Only a complete run and the resource checks establish a prize result.
 
 The evaluator, fixture generator, scoring formula, baseline weights and accounting stay fixed during a sweep. GPU training and changing model dimensions are separate campaigns. A new geometry requires matching native kernels and a new calibration.
+
+## Running repeated experiments
+
+Start the agent in a dedicated experiment branch with this file as its instruction. Give it the replay binary, fixture directory, persistent results directory and a budget of trials or wall time. Reproduce the identity result and run a zero-fraction export once with `loop.py --fractions 0` to measure the cost of reserializing the published tensors. Record the starting commit and both controls in the campaign log.
+
+After each sweep, inspect `trials.jsonl` and `sweep.jsonl`. Choose one new hypothesis from the results, write the rationale before running it, edit the exporter in the experiment branch, commit it, and rerun the same evaluator. Record the commit, result and keep/discard decision. Compare a change with the best retained model as well as the published reference. Keep the generator snapshot and evidence for discarded trials. Continue to the supplied budget or until an environmental failure prevents measurement. If a change works only on the discovery windows, keep the incumbent. The three row fractions in the first sweep seed this process.

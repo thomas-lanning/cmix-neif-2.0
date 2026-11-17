@@ -11,8 +11,8 @@ import np2_container as np2
 
 
 def export(source, output, fraction):
-    if not 0 < fraction <= 1:
-        raise ValueError("fraction must be in (0, 1]")
+    if not 0 <= fraction <= 1:
+        raise ValueError("fraction must be in [0, 1]")
     tensors = np2.read_container(str(source))
     # Coarsen the lowest-error MLP down-projection rows in the final MLP.
     eligible = [t for t in tensors if t.name.endswith("mlp.down.weight.q") and t.a.dtype == np.int8]
@@ -22,8 +22,9 @@ def export(source, output, fraction):
     coarse = np.clip(2 * np.rint(rows.astype(np.float32) / 2), -7, 7).astype(np.int8)
     error = ((coarse.astype(np.int16)-rows)**2).sum(axis=1)
     changed = np.flatnonzero(error)
-    chosen = changed[np.argsort(error[changed], kind="stable")[:max(1, int(len(changed)*fraction))]]
-    if not len(chosen):
+    count = max(1, int(len(changed)*fraction)) if fraction else 0
+    chosen = changed[np.argsort(error[changed], kind="stable")[:count]]
+    if fraction and not len(chosen):
         raise ValueError("no eligible rows")
     rows[chosen] = coarse[chosen]
     groups = np2.np_groups(tensors, True, True)

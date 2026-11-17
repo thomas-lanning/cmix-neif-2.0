@@ -67,7 +67,9 @@ def measure(exe, suite, candidate, store, label):
             Path(out.name).replace(ref_file)
         else:
             ref = json.loads(ref_file.read_text())
+    started = time.monotonic()
     trial = replay(exe, candidate, model, windows, suite)
+    replay_seconds = time.monotonic() - started
     window_deltas = [(t["bits"]-r["bits"])/r["targets"] for r,t in zip(ref,trial)]
     weight_delta = 2 * (model[2] - base[2])
     # Each window represents one evenly spaced stream position. Report the
@@ -76,7 +78,7 @@ def measure(exe, suite, candidate, store, label):
         return weight_delta + statistics.mean(group)*FULL_TARGETS/8
     result = dict(label=label, candidate_sha256=model[0], candidate_bytes=model[2],
                   reference_sha256=base[0], suite_sha256=digest(manifest), evaluator=key,
-                  selection=info["selection"], twice_weight_delta=weight_delta,
+                  selection=info["selection"], twice_weight_delta=weight_delta, replay_seconds=replay_seconds,
                   bits_per_target_delta_by_window=window_deltas, reference=ref, candidate=trial,
                   search_proxy_bytes=proxy(window_deltas[::2]),
                   confirmation_proxy_bytes=proxy(window_deltas[1::2]),
@@ -96,7 +98,7 @@ def main():
     p.add_argument("--label", default="manual")
     args = p.parse_args()
     r = measure(args.replay.resolve(), args.suite.resolve(), args.candidate.resolve(), args.results, args.label)
-    for k in ("twice_weight_delta","search_proxy_bytes","confirmation_proxy_bytes","proxy_delta_bytes"):
+    for k in ("twice_weight_delta","search_proxy_bytes","confirmation_proxy_bytes","proxy_delta_bytes","replay_seconds"):
         print(f"METRIC {k}={r[k]:.6f}")
 
 
