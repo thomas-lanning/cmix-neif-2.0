@@ -11,8 +11,9 @@ The first 131,072 entropy-coded decisions from the hash-verified upstream archiv
 | 4,096 | 12 bits | 14,060 | +368 |
 | 4,096 | 16, 24 or 32 bits | 14,059 | +367 |
 | 65,536 | 12, 16, 24 or 32 bits | 13,715 | +23 |
+| 131,072 | 24 bits (single-block replay of the downloaded trace) | 13,704 | +12 |
 
-The two larger blocks carried 24 bytes of framing and state in total. The sample covers the start of the archive. A useful next comparison is a longer capture in the article body, measuring both compressed bytes and native single-core time. The Python replay measures byte counts and correctness. A full-codec trial also has to count changes in both executable sizes, regenerate probabilities in the decoder and round-trip `enwik9`.
+The model's ideal length on these decisions, computed by summing the negative log probabilities, was 13,692.27 bytes. Encoding in a single block cost 12 bytes above arithmetic, exactly the size of the frame header and final state. Reproduce that row with `--precision 24 --block-size 131072`. The sample covers the start of the archive. A useful next comparison is a longer capture in the article body, measuring both compressed bytes and native single-core time. The Python replay measures byte counts and correctness. A full-codec trial also has to count changes in both executable sizes, regenerate probabilities in the decoder and round-trip `enwik9`.
 
 ## Reproduction
 

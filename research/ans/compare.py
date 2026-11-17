@@ -1,6 +1,7 @@
 """Compare the upstream binary arithmetic coder with blockwise byte-renormalized rANS."""
 import argparse
 import json
+import math
 from pathlib import Path
 import struct
 
@@ -99,6 +100,8 @@ def main():
     if any(not 0 < p <= MASK or b > 1 for p,b in events):
         raise ValueError("invalid model decision")
     reference = arithmetic(events)
+    ideal_bytes = math.fsum(-math.log2((p if b else (1 << 32) - p) / (1 << 32))
+                            for p, b in events) / 8
     if args.original_payload:
         # The last byte terminates the prefix in isolation. The release stream continues.
         with args.original_payload.open("rb") as f:
@@ -109,7 +112,8 @@ def main():
         for b in args.block_size:
             size = compare(events, k, b)
             print(json.dumps(dict(events=len(events), precision=k, block_size=b,
-                arithmetic_bytes=len(reference), rans_framed_bytes=size, delta=size-len(reference),
+                arithmetic_bytes=len(reference), ideal_model_bytes=ideal_bytes,
+                rans_framed_bytes=size, delta=size-len(reference),
                 bit_roundtrip=True)))
 
 
