@@ -21,6 +21,8 @@ def main():
     parser.add_argument("scratch", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("selection", choices=["40000000", "full"])
+    parser.add_argument("--windows", type=int, default=12)
+    parser.add_argument("--exclude-manifest", type=Path)
     args = parser.parse_args()
     dump = args.scratch / "dump"
     priors = args.scratch / "priors"
@@ -44,7 +46,9 @@ def main():
     if not np.array_equal(tokens[6:], lut[canonical[:expected-6]]):
         raise ValueError("byte-to-prior alignment differs from the canonical coder stream")
     starts = np.flatnonzero(records["fl"] & dumpv2.DOKANFANG)
-    if len(starts) < 12:
+    if args.windows < 12 or args.windows > 96 or args.windows % 2:
+        raise ValueError("choose an even number of windows from 12 through 96")
+    if len(starts) < args.windows:
         raise ValueError("insufficient document starts")
     # Stream byte 15,282,108 is the end of the title gate after the three setup articles.
     # Aim at byte quantiles, then choose the first full document with a real body.
@@ -56,7 +60,13 @@ def main():
     args.output.mkdir()
     windows = []
     used = set()
-    for offset in np.linspace(15_282_108, expected - 200_000, 12, dtype=np.int64):
+    if args.exclude_manifest:
+        other = json.loads(args.exclude_manifest.read_bytes())
+        if other["selection"] != args.selection:
+            raise ValueError("excluded document IDs must refer to the same raw dump")
+        used.update(w["document"] for w in other["windows"])
+    first = 45_000_000 if args.selection == "full" else 15_282_108
+    for offset in np.linspace(first, expected - 200_000, args.windows, dtype=np.int64):
         for doc in range(int(np.searchsorted(src_at_start, offset)), len(starts) - 1):
             if doc in used:
                 continue

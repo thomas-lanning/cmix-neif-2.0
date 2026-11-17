@@ -45,8 +45,9 @@ def measure(exe, suite, candidate, store, label):
     manifest = (suite / "manifest.json").read_bytes()
     info = json.loads(manifest)
     windows = info["windows"]
-    if len(windows) != 12 or len({w["file"] for w in windows}) != 12 or info["format"] != 1:
-        raise ValueError("expected the 12 distinct windows of suite version 1")
+    if (not 12 <= len(windows) <= 96 or len(windows) % 2 or
+            len({w["file"] for w in windows}) != len(windows) or info["format"] != 1):
+        raise ValueError("expected an even number of distinct windows in suite version 1")
     for w in windows:
         path = suite / w["file"]
         if path.parent != suite or digest(path.read_bytes()) != w["sha256"]:
