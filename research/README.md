@@ -39,4 +39,6 @@ The identity control must return zero on every window. A run records actual pack
 
 ## Evidence from this fork
 
+The [rANS comparison](ans/README.md) tests an alternative entropy coder against the release arithmetic coder on the same published bitstream.
+
 The [baseline build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44198808592) reproduced the published compressor hash. The [native research tools build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44199917904) produced the replay and three preparation tools.
