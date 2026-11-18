@@ -1,5 +1,11 @@
 name: Build and run the portable quantization benchmark
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      include_validation:
+        description: Also reconstruct the disjoint 48-article suite
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -54,4 +60,20 @@ jobs:
             ${{ runner.temp }}/research/results/trials.jsonl
             ${{ runner.temp }}/research/results/sweep.jsonl
             ${{ runner.temp }}/research/c40/*/*.log
+          retention-days: 30
+      - name: Rebuild 48 independent validation articles
+        if: inputs.include_validation
+        run: |
+          set -euo pipefail
+          scratch="$RUNNER_TEMP/research"
+          export PATH="$scratch/env/bin:$PATH"
+          bash research/quant/validation_c40.sh "$scratch/tools" "$scratch/c40" "$scratch/validation"
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.include_validation
+        with:
+          name: validation-c40
+          path: |
+            ${{ runner.temp }}/research/validation/c40-validation.tar.gz
+            ${{ runner.temp }}/research/validation/ranges.json
+            ${{ runner.temp }}/research/validation/priors.log
           retention-days: 30

@@ -26,7 +26,9 @@ def main():
     parser.add_argument("--exclude-manifest", type=Path, action="append", default=[])
     parser.add_argument("--start", type=int, help="first allowed source position in the dump (includes its 6-byte header)")
     parser.add_argument("--stop", type=int, help="exclusive source position in the dump")
-    parser.add_argument("--compact-priors", type=Path, help="the twelve verified C40 window spans")
+    parser.add_argument("--compact-priors", type=Path, help="selected binary prior rows")
+    parser.add_argument("--compact-plan", type=Path, help="row ranges represented in the compact priors")
+    parser.add_argument("--plan-only", action="store_true", help="write selected C40 prior ranges to the output JSON")
     args = parser.parse_args()
     dump = args.scratch / "dump"
     priors = args.scratch / "priors"
@@ -35,14 +37,21 @@ def main():
         raise ValueError("v2 dump header required")
     origins = np.memmap(priors / "ppmd-quelle.u8", dtype="u1", mode="r")
     raw_tokens = np.memmap(priors / "ppmd-bytes.uint8", dtype="u1", mode="r")
-    if args.compact_priors:
-        from compact_priors import CompactRaster
-        raw_prior = CompactRaster(args.compact_priors)
+    if args.plan_only:
+        if args.selection != "40000000" or args.compact_plan or args.compact_priors:
+            raise ValueError("C40 prior planning uses the full token and origin files")
+        raw_prior = None
+    elif args.compact_priors:
+        from compact_priors import CompactRaster, PLAN
+        raw_prior = CompactRaster(args.compact_priors, args.compact_plan or PLAN)
     else:
+        if args.compact_plan:
+            raise ValueError("a compact plan requires the corresponding binary prior rows")
         raw_prior = np.memmap(priors / "ppmd-probs.float16", dtype="<u2", mode="r").reshape(-1, 208)
     stream = np.flatnonzero(origins == 0)
     expected = 37_565_854 if args.selection == "40000000" else 501_062_287
-    if len(stream) != expected or len(origins) != len(raw_tokens) or len(raw_prior) != len(origins):
+    if (len(stream) != expected or len(origins) != len(raw_tokens) or
+            (raw_prior is not None and len(raw_prior) != len(origins))):
         raise ValueError("incomplete or mismatched rasters")
     tokens = raw_tokens[stream]
     # Check the native prior targets against the original transformed bytes (six-byte segment header).
@@ -65,7 +74,9 @@ def main():
     fallback = np.array([int(x, 16) for x in re.findall(r"0x[0-9a-f]+", text)], dtype="<u2")
     if hashlib.sha256(fallback.tobytes()).hexdigest() != "ceb297e328d9af5daa72f47b750267b1c1978e8d382d1d254692fe2dc31cbafc":
         raise ValueError("unexpected prior0")
-    args.output.mkdir()
+    if not args.plan_only:
+        args.output.mkdir()
+    spans = []
     windows = []
     used = set()
     for exclusion in args.exclude_manifest:
@@ -103,6 +114,12 @@ def main():
                 continue
             if not np.array_equal(target_token[:end][scored], tokens[target[:end][scored]]):
                 raise ValueError("target tokens disagree with the prior run")
+            valid = indices[:end] > 0
+            selected = stream[indices[:end][valid] - 1]
+            if args.plan_only:
+                spans.append((int(selected.min()), int(selected.max())+1))
+                used.add(doc)
+                break
             rows = np.zeros(end, dtype=ROW)
             for name in ("tok", "p1", "p2", "mb", "mc"):
                 rows[name] = fields[name][:end]
@@ -110,9 +127,8 @@ def main():
             rows["target"] = np.where(scored, target_token[:end], 0)
             rows["score"] = scored
             rows["prior"] = fallback
-            valid = indices[:end] > 0
             # Upstream trims injected rows, then looks up prior[target - 1].
-            rows["prior"][valid] = raw_prior[stream[indices[:end][valid] - 1]]
+            rows["prior"][valid] = raw_prior[selected]
             data = MAGIC + rows.tobytes()
             file = f"window-{len(windows):02d}.bin"
             (args.output / file).write_bytes(data)
@@ -123,6 +139,20 @@ def main():
             break
         else:
             raise ValueError(f"no usable document near {offset}")
+    if args.plan_only:
+        from compact_priors import PLAN
+        reference = json.loads(PLAN.read_bytes())
+        if len(origins) != reference["prior_rows"]:
+            raise ValueError("unexpected number of C40 rows")
+        merged = []
+        for lo, hi in sorted(spans):
+            if merged and lo <= merged[-1][1]:
+                merged[-1][1] = max(hi, merged[-1][1])
+            else:
+                merged.append([lo, hi])
+        with args.output.open("x") as f:
+            json.dump(dict(prior_rows=len(origins), raw_sha256=reference["raw_sha256"], spans=merged), f)
+        return
     manifest = args.output / "manifest.tmp"
     meta=dict(format=1, selection=args.selection,
         input_sha256="159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc",

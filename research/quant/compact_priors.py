@@ -1,4 +1,4 @@
-"""Hash the complete native C40 prior stream and retain the twelve benchmark spans."""
+"""Hash the complete native C40 prior stream and retain selected benchmark spans."""
 import argparse
 import hashlib
 import json
@@ -33,8 +33,8 @@ def collect(source, destination, plan):
 
 
 class CompactRaster:
-    def __init__(self, path):
-        plan = json.loads(PLAN.read_bytes())
+    def __init__(self, path, plan_path=PLAN):
+        plan = json.loads(plan_path.read_bytes())
         spans = np.array(plan["spans"],dtype=np.int64)
         self.starts,self.stops = spans.T
         self.offsets = np.cumsum(np.r_[0,(self.stops-self.starts)[:-1]])
@@ -55,6 +55,7 @@ class CompactRaster:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan", type=Path, default=PLAN)
     parser.add_argument("destination",type=Path)
     parser.add_argument("command",nargs=argparse.REMAINDER)
     a = parser.parse_args()
@@ -67,7 +68,7 @@ if __name__ == "__main__":
         with subprocess.Popen(a.command,env=env,pass_fds=(write_fd,)) as producer:
             sink.close()
             try:
-                collect(source,temporary,json.loads(PLAN.read_bytes()))
+                collect(source,temporary,json.loads(a.plan.read_bytes()))
                 if producer.wait():
                     raise ValueError("native PPMd producer failed")
             finally:
