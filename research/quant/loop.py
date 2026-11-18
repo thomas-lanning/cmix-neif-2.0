@@ -1,5 +1,6 @@
 """Run a bounded sweep of exported candidates, recording successes and failures."""
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -18,10 +19,12 @@ def main():
     p.add_argument("suite", type=Path)
     p.add_argument("results", type=Path)
     p.add_argument("--fractions", type=float, nargs="+", default=[0.125, 0.25, 0.5])
+    p.add_argument("--generator", type=Path, default=Path(__file__).with_name("candidate.py"),
+                   help="experiment exporter; the evaluator stays in this checkout")
     args = p.parse_args()
     root = args.results.resolve()
     root.mkdir(parents=True, exist_ok=True)
-    generator = Path(__file__).with_name("candidate.py")
+    generator = args.generator.resolve()
     failures = 0
     for fraction in args.fractions:
         with tempfile.TemporaryDirectory(dir=root) as temp:
@@ -34,16 +37,19 @@ def main():
                 subprocess.run(cmd, check=True, timeout=3600, env={**os.environ, "NEIF_SOURCE_ROOT": str(ROOT)})
                 r = measure(args.replay.resolve(), args.suite.resolve(), model, root, f"row fraction {fraction:g}")
                 h = r["candidate_sha256"]
-                if r["search_proxy_bytes"] < 0 and r["confirmation_proxy_bytes"] < 0:
+                keep = r["search_proxy_bytes"] < 0 and r["confirmation_proxy_bytes"] < 0
+                if keep:
                     model.replace(root / f"{h}.c5")
                 r = {k:r[k] for k in ("candidate_sha256","search_proxy_bytes","confirmation_proxy_bytes","twice_weight_delta")}
+                r["decision"] = "keep" if keep else "discard"
             except (ValueError, OSError, subprocess.SubprocessError) as exc:
                 failures += 1
-                r = {"error":str(exc)}
+                r = {"decision":"failed","error":str(exc)}
             source = (tmp / "hypothesis.py").read_bytes()
             code_hash = hashlib.sha256(source).hexdigest()
             (root / f"hypothesis-{code_hash}.py").write_bytes(source)
             with (root / "sweep.jsonl").open("a") as log:
+                fcntl.flock(log,fcntl.LOCK_EX)
                 print(json.dumps(dict(fraction=fraction, hypothesis_sha256=code_hash, **r)), file=log)
             print(r, flush=True)
     if failures:
