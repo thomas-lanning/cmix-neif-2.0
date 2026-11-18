@@ -1,0 +1,36 @@
+{
+  "build_run": 44247343840,
+  "build_source": "research/chained-rans",
+  "underlying_np2_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+  "weights": {
+    "original_bytes": 3744283,
+    "previous_hybrid_bytes": 3737913,
+    "hybrid_bytes": 3737246,
+    "hybrid_sha256": "4812ae35227511c9f6adbf6e2a7e3e6f15ab8a3ade58240f43ea7930bb4edbdf",
+    "original_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+    "exact_np2_roundtrip": true
+  },
+  "assembly": {
+    "origin": "reassembled with the published payload",
+    "reference_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "decoder_bytes": 185844,
+    "decoder_sha256": "d76f5222f9ce8935b4c3ec7cab5238871d38551d8007dabc170a9d4dd9debd99",
+    "weight_bytes": 3737246,
+    "weight_sha256": "4812ae35227511c9f6adbf6e2a7e3e6f15ab8a3ade58240f43ea7930bb4edbdf",
+    "payload_bytes": 85417870,
+    "payload_sha256": "fc2d8c8f824e740ec8b06fa129316043c3876027449005d58df21d0f12254b57",
+    "archive_bytes": 89340968,
+    "archive_sha256": "a95e4c795d3e81173e21d7d31986415a869f11c0991f8544f7f8ad377cb5d6d2",
+    "comp_bytes": 4037112,
+    "comp_sha256": "0a508d1c59a10c9997b799b127fa989abd997551e8e20c6d988959823207523b",
+    "entry_bytes_if_payload_identical": 93378080
+  },
+  "prefix": {
+    "bytes": 200000,
+    "sha256": "a3781682da3dc803ae1a7ee93630b8158ad1e8a76f58af26095a5c1050d1dd9e",
+    "published_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "reassembled_archive_sha256": "a95e4c795d3e81173e21d7d31986415a869f11c0991f8544f7f8ad377cb5d6d2",
+    "self_extracting_prefix_equal": true
+  },
+  "entry_delta_with_reference_payload": -10876
+}

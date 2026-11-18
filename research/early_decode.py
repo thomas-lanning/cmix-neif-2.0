@@ -38,7 +38,7 @@ def assemble(archive, image, model, destination):
     stub_size=start-weights_size
     if stub_size!=183885 or weights_size!=3744629 or digest(released[stub_size:start])!=WEIGHTS:
         raise ValueError("unexpected published archive layout")
-    if image[:4]!=b"\x7fELF" or not model.startswith((b"FX2TFWP5",b"NEIFHYB2")):
+    if image[:4]!=b"\x7fELF" or not model.startswith((b"FX2TFWP5",b"NEIFHYB2",b"NEIFCHN1")):
         raise ValueError("unexpected decoder or weight file")
     payload=released[start:-8]
     with destination.open("xb") as f:
