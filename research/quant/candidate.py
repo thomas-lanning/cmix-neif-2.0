@@ -44,9 +44,9 @@ def export(source,output,choice):
             raise ValueError("unsupported attention geometry")
         if mode in (0,2):
             # Both elements of each rotary pair and all three queries share
-            # their K sign. Positions separated by 32 form the upstream pair.
-            groups=np.arange(192).reshape(6,32).T
-            key_groups=np.arange(64).reshape(2,32).T
+            # their K sign. The upstream AVX kernel pairs consecutive coordinates.
+            groups=np.arange(192).reshape(3,32,2).transpose(1,0,2).reshape(32,6)
+            key_groups=np.arange(64).reshape(32,2)
             flip=orientation(([q[g] for g in groups],[k[g] for g in key_groups]),threshold)
             q[groups[flip].ravel()]*=-1;k[key_groups[flip].ravel()]*=-1
             changed+=int(flip.sum())
