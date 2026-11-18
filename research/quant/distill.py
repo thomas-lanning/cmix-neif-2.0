@@ -9,6 +9,7 @@ import time
 
 import numpy as np
 from allocation import bf16, np2, round_bf16
+from calibrated import fit_codes
 from evaluate import BASELINE, REFERENCE_SHA, measure
 
 
@@ -45,7 +46,7 @@ def raster(folder, manifest, layer, family):
     return np.memmap(path,mode="r",dtype="u1",shape=(info["rows"],info["width"]))
 
 
-def train_layer(tensors, folder, manifest, layer, fraction, steps, batch, destination):
+def train_layer(tensors, folder, manifest, layer, fraction, steps, batch, destination, refit=False):
     prefix=f"blocks.{layer}.mlp."
     q=lambda part:tensors[prefix+part+".weight.q"].a.astype(np.float32)
     s=lambda part:bf16(tensors[prefix+part+".weight.scale"].a).reshape(-1)
@@ -97,6 +98,28 @@ def train_layer(tensors, folder, manifest, layer, fraction, steps, batch, destin
     best=snapshot()
     initial=best_loss=valid_loss(best)
     best_step=0
+    if refit:
+        # With fixed hidden codes the down projection is a quadratic problem.
+        # Solve its continuous optimum once and alternate integer codes with a
+        # representable row scale. Measure the actual native-grid error on held-out rows.
+        target=down.value.astype(np.float64)
+        cov=hk.astype(np.float64)
+        gain=np.ones(len(sd),dtype=np.float64)
+        for epoch in range(4):
+            codes=fit_codes(target,cov,7,gain,sweeps=2)
+            ch=codes@cov
+            denominator=(ch*codes).sum(axis=1)
+            optimum=(ch*target).sum(axis=1)/np.maximum(denominator,1e-12)
+            fitted=round_bf16(sd*np.clip(optimum,.75,1.5))
+            gain=bf16(fitted)/np.maximum(sd,1e-30)
+            gain=np.where(sd==0,1,gain)
+            state=(best[0],codes.astype("i1"),best[2],fitted)
+            loss=valid_loss(state)
+            if loss<best_loss:
+                best_loss,best_step,best=loss,-epoch-1,state
+        down=Adam(best[1].astype(np.float32))
+        ratio=bf16(best[3])/np.maximum(sd,1e-30)
+        downs=Adam(np.log(np.where(sd==0,1,ratio)))
     for step in range(1,steps+1):
         i=rng.integers(0,len(x),batch)
         uc,dc,us,ds=snapshot()
@@ -112,7 +135,7 @@ def train_layer(tensors, folder, manifest, layer, fraction, steps, batch, destin
         up.step((dz*fu).T@x[i],step,.025*mult,-7.49,7.49)
         downs.step((dy*pred).sum(axis=0),step,.001*mult,-.35,.35)
         ups.step((dz*pre).sum(axis=0),step,.0005*mult,-.35,.35)
-        if step%64==0 or step==steps:
+        if step%64==0 or step==steps or (refit and step in (1,4,16,32)):
             state=snapshot()
             loss=valid_loss(state)
             if loss<best_loss:
@@ -130,6 +153,7 @@ def main():
     p.add_argument("--fractions",type=float,nargs="+",default=[.125,.25,.375,.0625])
     p.add_argument("--steps",type=int,default=1024)
     p.add_argument("--batch",type=int,default=128)
+    p.add_argument("--refit",action="store_true",help="fit integer down-projection codes and BF16 scales before gradient updates")
     p.add_argument("--until",type=float,default=math.inf)
     a=p.parse_args()
     a.replay,a.suite,a.profile,a.output=map(Path.resolve,(a.replay,a.suite,a.profile,a.output))
@@ -144,7 +168,7 @@ def main():
     bank=np2.read_container(str(BASELINE))
     names={t.name:t for t in bank}
     provenance=hashlib.sha256(f+Path(__file__).read_bytes()+
-            str((a.steps,a.batch)).encode()).hexdigest()
+            str((a.steps,a.batch,a.refit)).encode()).hexdigest()
     screen=a.output/"screen"
     fitted=a.output/("fits-"+provenance[:12])
     screen.mkdir(exist_ok=True,parents=True)
@@ -154,10 +178,10 @@ def main():
             if time.time()>=a.until: return
             dest=fitted/f"{fraction}-{layer}.npz"
             if not dest.exists():
-                train_layer(names,a.profile,manifest,layer,fraction,a.steps,a.batch,dest)
+                train_layer(names,a.profile,manifest,layer,fraction,a.steps,a.batch,dest,a.refit)
         for layers in (list(range(12)),list(range(4)),list(range(4,8)),list(range(8,12))):
             if time.time()>=a.until: return
-            spec=dict(kind="distill",family="mlp",fraction=fraction,layers=layers,steps=a.steps)
+            spec=dict(kind="distill",family="mlp",fraction=fraction,layers=layers,steps=a.steps,refit=a.refit)
             key=hashlib.sha256(json.dumps([spec,provenance],sort_keys=True).encode()).hexdigest()[:20]
             if (screen/(key+".json")).exists(): continue
             started=time.monotonic()
