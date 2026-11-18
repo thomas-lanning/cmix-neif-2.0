@@ -1,0 +1,39 @@
+{
+  "build_run": 44252894143,
+  "build_source": "research/row-predictor-rans",
+  "source_commit": "8a20fc1",
+  "weights": {
+    "original_bytes": 3744283,
+    "previous_hybrid_bytes": 3730834,
+    "hybrid_bytes": 3730147,
+    "hybrid_sha256": "3290f8707d906a5babab14025c53767a7fe75d5ea1a2b908ac097aea2385721c",
+    "original_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+    "exact_np2_roundtrip": true
+  },
+  "assembly": {
+    "origin": "reassembled with the published payload",
+    "reference_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "decoder_bytes": 185962,
+    "decoder_sha256": "08ffb11c326e908692545b17db8bc113902a72168b61e614773b18ce6ca39e6f",
+    "weight_bytes": 3730147,
+    "weight_sha256": "3290f8707d906a5babab14025c53767a7fe75d5ea1a2b908ac097aea2385721c",
+    "payload_bytes": 85417870,
+    "payload_sha256": "fc2d8c8f824e740ec8b06fa129316043c3876027449005d58df21d0f12254b57",
+    "archive_bytes": 89333987,
+    "archive_sha256": "98eda92c9cdc8feffc680430a48797611406ef7d9b82af4f72e9749f579cb040",
+    "comp_bytes": 4030164,
+    "comp_sha256": "fde8f7d3eac1d107d4923d8a8ec7a8d70d993ff1583eb548e795950cf9db8d0e",
+    "entry_bytes_if_payload_identical": 93364151
+  },
+  "decoded_tensor_slots": 597,
+  "decoded_tensor_dump_sha256": "10f543b3e90473468f0b083eea76eff06b1694389a3bedd54335c7f0d0c9162d",
+  "prefix": {
+    "bytes": 200000,
+    "sha256": "a3781682da3dc803ae1a7ee93630b8158ad1e8a76f58af26095a5c1050d1dd9e",
+    "published_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "reassembled_archive_sha256": "98eda92c9cdc8feffc680430a48797611406ef7d9b82af4f72e9749f579cb040",
+    "self_extracting_prefix_equal": true
+  },
+  "ordinary_body_run": 44254998456,
+  "entry_delta_with_reference_payload": -24805
+}
