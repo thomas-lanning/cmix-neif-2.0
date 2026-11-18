@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-#include "adaptive_matrix.h"
+#include "residual_matrix.h"
 #include <cstdio>
 #include <cstring>
 
@@ -15,10 +15,10 @@ int main(int argc,char** argv) {
   if (!std::strcmp(argv[1],"encode")) {
     check(std::fread(q.data(),1,q.size(),in)==q.size() && std::getc(in)==EOF);
     for(int v:q) check(v>=-7 && v<=7);
-    for (unsigned transpose:{0u,8u}) for (unsigned variant:{0u,1u,2u,3u,5u,7u}) {
-      unsigned mode=transpose+variant;
+    for (unsigned mode=0; mode<32; ++mode) {
+      if (mode<16 && ((mode&7)==4 || (mode&7)==6)) continue;
       Writer writer;
-      pass(q.data(),rows,cols,mode,writer);
+      selected_pass(q.data(),rows,cols,mode,writer);
       auto trial=writer.finish();
       if (encoded.empty() || trial.size()+1<encoded.size()) {
         encoded.swap(trial);encoded.insert(encoded.begin(),uint8_t(mode));
@@ -26,14 +26,14 @@ int main(int argc,char** argv) {
     }
     auto recovered=std::vector<int8_t>(q.size());
     Reader reader(encoded.data()+1,encoded.size()-1);
-    pass(recovered.data(),rows,cols,encoded[0],reader);reader.finish();
+    selected_pass(recovered.data(),rows,cols,encoded[0],reader);reader.finish();
     check(recovered==q);
   } else if (!std::strcmp(argv[1],"decode")) {
     int ch;
     while ((ch=std::getc(in))!=EOF) encoded.push_back(uint8_t(ch));
-    check(encoded.size()>=5 && encoded[0]<16);
+    check(encoded.size()>=5 && encoded[0]<32);
     Reader reader(encoded.data()+1,encoded.size()-1);
-    pass(q.data(),rows,cols,encoded[0],reader);reader.finish();
+    selected_pass(q.data(),rows,cols,encoded[0],reader);reader.finish();
   } else return 2;
   check(!std::ferror(in) && std::fclose(in)==0);
   FILE* out=std::fopen(argv[5],"wb");

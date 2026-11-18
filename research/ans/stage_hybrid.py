@@ -36,7 +36,7 @@ def install(root,weights,sha,codec,reference):
         fingerprint=(fingerprint^byte)*1099511628211 & 0xffffffffffffffff
     code=f"0x{fingerprint:016x}ULL"
     reader=root/"src/tf1/weights_io_compressed.cpp"
-    text=once(reader.read_text(), '#include "weights_io.h"', '#include "weights_io.h"\n#include "adaptive_matrix.h"')
+    text=once(reader.read_text(), '#include "weights_io.h"', '#include "weights_io.h"\n#include "residual_matrix.h"')
     text=once(text,"const uint32_t nA = r.u32(), lenA = r.u32(), K = r.u32();","""const uint32_t nA = r.u32(), K = r.u32(), lenA = r.u32(), extra = r.u32();
   r.need(size_t(lenA) + extra);
   Reader frames{r.p + lenA, extra, path};
@@ -66,9 +66,9 @@ def install(root,weights,sha,codec,reference):
             frames.read(&id,2);
             uint32_t length = frames.u32();
             frames.need(length);
-            if (length < 6 || frames.p[0] != 0 || frames.p[1] >= 16 || t.ndim != 2) msg_stop(235);
+            if (length < 6 || frames.p[0] != 0 || frames.p[1] >= 32 || t.ndim != 2) msg_stop(235);
             matrix_ans::Reader input(frames.p + 2,length - 2);
-            matrix_ans::pass(out,rows,cols,frames.p[1],input);
+            matrix_ans::selected_pass(out,rows,cols,frames.p[1],input);
             input.finish();
             frames.p += length;
             frames.left -= length;
@@ -104,6 +104,7 @@ def install(root,weights,sha,codec,reference):
     for p,s in extra.items():p.write_text(s)
     reader.write_text(text)
     shutil.copyfile(Path(__file__).with_name("adaptive_matrix.h"),reader.parent/"adaptive_matrix.h")
+    shutil.copyfile(Path(__file__).with_name("residual_matrix.h"),reader.parent/"residual_matrix.h")
     (root/WEIGHTS).write_bytes(raw)
 
 

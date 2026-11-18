@@ -5,8 +5,8 @@ on:
       underlying_model:
         description: Underlying integer weights for the adaptive rANS container
         type: choice
-        options: [published, equivalent-rows]
-        default: published
+        options: [equivalent-rows]
+        default: equivalent-rows
 permissions:
   contents: read
 jobs:
@@ -36,7 +36,7 @@ jobs:
             underlying="$result/equivalent.c5"
             "$RUNNER_TEMP/env/bin/python" research/quant/symmetry.py export tables fit .06 "$underlying"
             echo "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa  $underlying" | sha256sum -c -
-            sha=184b51338faabfdec11287e74faee86d8cfdd01dfdd6a94c864bb354a27b243c
+            sha=57e6727b89cea5c7214d1c2edcc966918623e7dbec9e37f30c713df68e63f46e
           fi
           "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$underlying" "$result/hybrid.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/weights.json"
           echo "$sha  $result/hybrid.c5" | sha256sum -c -
