@@ -1,0 +1,60 @@
+name: Rebuild and independently check adaptive rANS weights
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  hybrid:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Regenerate weights and stage a clean release
+        run: |
+          result="$RUNNER_TEMP/hybrid"
+          tree="$RUNNER_TEMP/hybrid-source"
+          mkdir "$result" "$tree"
+          git archive 35d1957a5074db802fc134126afc77b76d931761 | tar -x -C "$tree"
+          python3 -m venv "$RUNNER_TEMP/env"
+          "$RUNNER_TEMP/env/bin/pip" install --quiet numpy==2.2.6
+          g++ -O3 -std=c++17 research/ans/adaptive_matrix.cpp -o "$result/matrix"
+          name=weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5
+          sha=a13dd39b10b9bb1439acc3c084558599943810c9066ea946afb336c49dcf60a4
+          "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$tree/$name" "$result/hybrid.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/weights.json"
+          echo "$sha  $result/hybrid.c5" | sha256sum -c -
+          "$RUNNER_TEMP/env/bin/python" research/ans/stage_hybrid.py "$tree" "$result/hybrid.c5" "$sha" "$result/matrix"
+      - name: Build with pinned dependencies in an offline container
+        run: |
+          tool="$RUNNER_TEMP/base-image"; mkdir "$tool"
+          cp install.sh "$tool/"
+          printf 'FROM ubuntu:24.04\nCOPY install.sh /tmp/install.sh\nRUN bash /tmp/install.sh\n' >"$tool/Dockerfile"
+          docker build -q -t neif-hybrid-build "$tool"
+          result="$RUNNER_TEMP/hybrid"
+          mkdir "$result/release"; chmod 777 "$result/release"
+          docker run --rm --network none --user 65534:65534 -v "$RUNNER_TEMP/hybrid-source:/source:ro" -v "$result/release:/result" -w /result neif-hybrid-build bash /source/build.sh >"$result/build.log" 2>&1 || { tail -70 "$result/build.log"; exit 1; }
+          sha256sum "$result/release/comp9" >"$result/comp9.sha256"
+      - name: Verify the reference layout and fresh release decoder
+        run: |
+          result="$RUNNER_TEMP/hybrid"
+          curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$result/reference.archive"
+          curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/comp9 -o "$result/reference.comp"
+          echo "976bf2d309707ab555e0c92720da5508ff0e5e6b846fc7082234262b06767f82  $result/reference.comp" | sha256sum -c -
+          python3 research/early_decode.py "$result/reference.archive" "$result/reference.comp" "$result/control.archive" >"$result/reference.json"
+          cmp "$result/reference.archive" "$result/control.archive"
+          python3 research/early_decode.py "$result/reference.archive" "$result/release/comp9" "$result/hybrid.archive" >"$result/assembly.json"
+          python3 research/ans/release_prefix.py "$result/reference.archive" "$result/hybrid.archive" "$result/prefix"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hybrid-release-check
+          path: |
+            ${{ runner.temp }}/hybrid/weights.json
+            ${{ runner.temp }}/hybrid/assembly.json
+            ${{ runner.temp }}/hybrid/comp9.sha256
+            ${{ runner.temp }}/hybrid/release/comp9
+            ${{ runner.temp }}/hybrid/prefix/result.json
+            ${{ runner.temp }}/hybrid/prefix/*/decoder.log
+            ${{ runner.temp }}/hybrid/build.log
+          retention-days: 14
