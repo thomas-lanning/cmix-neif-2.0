@@ -11,10 +11,11 @@ from evaluate import BASELINE, measure
 from fixtures import MAGIC, ROW
 
 
-def crops(model, suite):
+def crops(model, suite, independent=False):
     manifest = json.loads((suite/"manifest.json").read_bytes())
     train, validation = [], []
-    for i, w in enumerate(manifest["windows"][::2]):
+    windows = manifest["windows"] if independent else manifest["windows"][::2]
+    for i, w in enumerate(windows):
         path = suite/w["file"]
         if digest(path) != w["sha256"]:
             raise ValueError("fixture changed")
@@ -23,8 +24,16 @@ def crops(model, suite):
             raise ValueError("invalid fixture")
         rows = np.frombuffer(raw,dtype=ROW,offset=len(MAGIC))
         scored = np.flatnonzero(rows["score"])
-        split = train if i<4 else validation
-        for start in np.linspace(0,len(scored)-32,12 if i<4 else 4,dtype=int):
+        fit_article = i % 6 != 5 if independent else i < 4
+        split = train if fit_article else validation
+        if independent:
+            # Sample within each half, away from the warm-up and terminal boundaries.
+            n = 2 if fit_article else 1
+            edges = np.linspace(0, len(scored)-32, n+1, dtype=int)
+            starts = (edges[:-1]+edges[1:])//2
+        else:
+            starts = np.linspace(0, len(scored)-32, 12 if fit_article else 4, dtype=int)
+        for start in starts:
             positions = scored[start:start+32]
             # Both models see the same 128 preceding rows for distillation.
             # Final screening replays the native model from the article reset.
@@ -116,7 +125,25 @@ def run(a):
     if plan["suite"]!=digest(a.suite/"manifest.json"):
         raise ValueError("Fisher plan used different articles")
     bank = np2.read_container(str(BASELINE))
-    train, validation = crops(model,a.suite)
+    training_suite = a.training_suite or a.suite
+    if a.training_suite:
+        if not a.validation_manifest:
+            raise ValueError("provide the independently pinned validation manifest")
+        from validate_exports import QUICK, VALIDATION
+        if digest(a.suite/"manifest.json") != QUICK or digest(a.validation_manifest) != VALIDATION:
+            raise ValueError("unknown quick or validation fixture")
+        training = json.loads((training_suite/"manifest.json").read_bytes())
+        quick = json.loads((a.suite/"manifest.json").read_bytes())
+        validate = json.loads(a.validation_manifest.read_bytes())
+        identity = ("input_sha256", "format", "selection")
+        if any(training[k] != quick[k] or training[k] != validate[k] for k in identity):
+            raise ValueError("training and evaluation use different source data")
+        def documents(manifest):
+            return {w["document"] for w in manifest["windows"]}
+        ids = documents(training)
+        if len(training["windows"]) != 96 or len(ids) != 96 or ids & (documents(quick)|documents(validate)):
+            raise ValueError("expected 96 distinct training documents disjoint from both evaluation suites")
+    train, validation = crops(model,training_suite,independent=bool(a.training_suite))
     a.output.mkdir()
     for count in (32,256):
         fits,handles = install(model,bank,plan["ranked_rows"],count)
@@ -150,7 +177,9 @@ def run(a):
         report=dict(rows=count,steps=a.steps,fit_crops=[b[4] for b in train],
                     validation_crops=[b[4] for b in validation],targets_per_crop=32,
                     initial_kl=initial_loss,best_kl=best_loss,best_step=best_step,
-                    history=trace,ranking_sha256=digest(a.ranking))
+                    history=trace,ranking_sha256=digest(a.ranking),
+                    fitting_manifest_sha256=digest(training_suite/"manifest.json"),
+                    screening_manifest_sha256=digest(a.suite/"manifest.json"))
         (a.output/f"fit-{count}.json").write_text(json.dumps(report,indent=2)+"\n")
         for label, state in [("initial",initial),("distilled",best)]:
             if label=="distilled" and not best_step:
@@ -169,4 +198,6 @@ if __name__=="__main__":
     for arg in ("checkpoint","ranking","suite","replay","output"):
         p.add_argument(arg,type=lambda s:Path(s).resolve())
     p.add_argument("--steps",type=int,default=96)
+    p.add_argument("--training-suite",type=Path)
+    p.add_argument("--validation-manifest",type=Path)
     run(p.parse_args())

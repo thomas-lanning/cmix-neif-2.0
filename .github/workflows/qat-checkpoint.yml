@@ -12,6 +12,9 @@ on:
       profile_run:
         description: Run containing the quantized-head native profiles
         type: string
+      training_run:
+        description: Optional separate 96-article training fixture build
+        type: string
       refit_from:
         description: Optional completed cpu-fisher-trial run with frozen row choices
         type: string
@@ -120,6 +123,20 @@ jobs:
           run-id: ${{ inputs.refit_from }}
           name: cpu-fisher-trial
           path: ${{ runner.temp }}/frozen-fisher
+      - uses: actions/download-artifact@v4
+        if: inputs.refit_from != '' && inputs.training_run != ''
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.training_run }}
+          name: training-c40
+          path: ${{ runner.temp }}/training-artifact
+      - uses: actions/download-artifact@v4
+        if: inputs.refit_from != '' && inputs.training_run != ''
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.training_run }}
+          name: validation-c40
+          path: ${{ runner.temp }}/validation-artifact
       - name: Train discrete row weights and scales through the full CPU model
         if: inputs.refit_from != ''
         run: |
@@ -129,8 +146,14 @@ jobs:
           source training/tf/3_train/tree/exp.env
           tar -C "$d" -xzf "$RUNNER_TEMP/fixture-artifact/c40-kit.tar.gz"
           echo "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b  $d/suite/manifest.json" | sha256sum -c -
+          options=()
+          if [[ -d "$RUNNER_TEMP/training-artifact" ]]; then
+            tar -C "$d" -xzf "$RUNNER_TEMP/training-artifact/c40-training.tar.gz"
+            tar -xzOf "$RUNNER_TEMP/validation-artifact/c40-validation.tar.gz" ./suite/manifest.json >"$d/validation-manifest.json"
+            options=(--training-suite "$d/training" --validation-manifest "$d/validation-manifest.json" --steps 192)
+          fi
           "$RUNNER_TEMP/env/bin/python" -u research/quant/qat_rows.py "$RUNNER_TEMP/checkpoint" \
-            "$RUNNER_TEMP/frozen-fisher/results/ranking.json" "$d/suite" "$d/replay" "$d/results" | tee "$d/fit.log"
+            "$RUNNER_TEMP/frozen-fisher/results/ranking.json" "$d/suite" "$d/replay" "$d/results" "${options[@]}" | tee "$d/fit.log"
       - uses: actions/upload-artifact@v4
         if: always() && inputs.refit_from != ''
         with:
