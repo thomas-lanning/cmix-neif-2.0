@@ -33,7 +33,9 @@ __attribute__((noinline)) static void sample(uint64_t pos,const State& s,
   constexpr uint32_t starts[]={16000000,28000000,38000000};
   int group=-1;
   for (int i=0;i<3;++i) if (pos>=starts[i] && pos<starts[i]+2000000u) group=i;
-  if (group<0 || n<8 || selected[group]>=1536 || (++population[group]%97)!=1) return;
+  if (group<0 || n<8) return;
+  ++population[group];
+  if (selected[group]>=1536 || (population[group]%97)!=1) return;
   ++selected[group];
   FILE*& f=output[group];
   if (!f) {
