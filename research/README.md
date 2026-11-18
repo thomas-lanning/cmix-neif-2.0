@@ -2,6 +2,21 @@
 
 The baseline is `marwoelk/cmix-neif-2.0` at `35d1957a5074db802fc134126afc77b76d931761`. Its published score is 93,388,956 bytes. The rules and accounting are in [prize-rules.md](prize-rules.md). The experiment instructions are in [quant/program.md](quant/program.md).
 
+## November 18 measurements
+
+The rebuilt upstream compressor matches the published 4,042,564-byte executable byte for byte. The smallest rebuilt variant so far uses arithmetic coding for text and one rANS state for 73 selected weight matrices. Some attention rows use an earlier row as a predictor. The packed format pays for each reference. It reconstructs all 597 tensors of the sign-equivalent network exactly. [Baseline build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44201814970) · [rANS source and build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44252894143)
+
+| Release | Compressor | Archive with published payload | Combined | Saving |
+| --- | ---: | ---: | ---: | ---: |
+| Published cmix-neif 2.0 | 4,042,564 | 89,346,392 | 93,388,956 | — |
+| Signed rows and separate rANS frames | 4,037,873 | 89,341,703 | 93,379,576 | 9,380 |
+| One rANS state across matrices | 4,037,112 | 89,340,968 | 93,378,080 | 10,876 |
+| One state with correlated-row prediction | 4,030,164 | 89,333,987 | 93,364,151 | 24,805 |
+
+For the separate-frame variant, the ordinary compressor reproduced all 3,367,414 comparable payload bytes at the 20-million-canonical-byte checkpoint. A fresh self-extractor returned the expected 20 million bytes. The correlated-row package passed the clean 200,000-byte decoder check and its complete native tensor dump agrees with the signed reference. A prize score still requires a fresh full archive and a clean 1 GB round trip within the resource limits. [Two-phase 20M verification](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44236726330) · [Correlated-row measurements](ans/row-predictor-result.json) · [Prize rules](prize-rules.md)
+
+The quick screen takes about 18–19 seconds per frozen export after caching the reference. It estimates the primary transformer's loss on 12 articles. Independent builds supply 48 validation articles, 96 disjoint training articles and 24 windows from exactly the expensive mixed-coder interval. The actual payload audit measures the final arithmetic stream. One frozen lossy model added 86 bytes in that interval while the matched head estimate predicted a saving of 76 bytes. Keep these two measurements visible when interpreting weight experiments. [Portable benchmark](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44237376052) · [Matched interval](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44248300047) · [Quantization results](quant/hosted-results.json)
+
 ## Portable benchmark
 
 For the fastest start, download `portable-c40` from the [independent benchmark build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44237376052). Its `c40-kit.tar.gz` is 9,290,175 bytes and has SHA-256 `1a2a42bdb13d39a8bbc8e25e90a34054e58635292699546a53ec8954c4a684e1`. On x86-64-v3 Linux, extract it into a fresh directory and run these commands from the fork checkout.

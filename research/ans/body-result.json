@@ -12,5 +12,17 @@
   "published_arithmetic_bytes_compared_including_header": 3367414,
   "published_arithmetic_sha256_including_header": "52c208ff8ef5e0d0844d928e5a53d0b0411eb456edec3e230ad4d49f4b167a58",
   "continuing_arithmetic_sha256_excluding_header": "0395787b1322f7e9fb57eb2be79c1bbdc4dc578daa3057ea66a76409c4cfe590",
-  "experiment_commit": "6e0eba4d1482268cb4417315c2e80237edd4ef34"
+  "experiment_commit": "6e0eba4d1482268cb4417315c2e80237edd4ef34",
+  "continuous_200k": {
+    "build_run": 44251471890,
+    "canonical_bytes": 200000,
+    "fresh_decoder_roundtrip": true,
+    "native_tool_sha256": "c9032a316d52d255af95662331c17ad8460b19faea71aad6c4c9d5d2577498ad",
+    "canonical_prefix_sha256": "a3781682da3dc803ae1a7ee93630b8158ad1e8a76f58af26095a5c1050d1dd9e",
+    "common_header_bytes": 5,
+    "original_arithmetic_bytes": 42694,
+    "rans_bytes": 42701,
+    "rans_sha256": "1641ff3380aa51e1f01e3d372fce8616d8d463939f4faf8918c61751200696e5",
+    "published_continuing_prefix_bytes": 42693
+  }
 }
