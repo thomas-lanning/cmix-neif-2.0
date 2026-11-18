@@ -28,8 +28,8 @@ struct Writer {
     events.push_back(uint16_t(2*p+actual));
     return actual;
   }
-  std::vector<uint8_t> finish() const {
-    uint32_t state=lower;
+  std::vector<uint8_t> finish(uint32_t state=lower) const {
+    check(state>=lower);
     std::vector<uint8_t> out;
     for (auto it=events.rbegin();it!=events.rend();++it) {
       unsigned p=*it>>1, one=*it&1;

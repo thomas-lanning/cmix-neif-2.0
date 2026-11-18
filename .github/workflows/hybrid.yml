@@ -29,6 +29,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/env"
           "$RUNNER_TEMP/env/bin/pip" install --quiet numpy==2.2.6
           g++ -O3 -std=c++17 research/ans/adaptive_matrix.cpp -o "$result/matrix"
+          g++ -O3 -std=c++17 research/ans/chain_matrix.cpp -o "$result/chain-matrix"
           name=weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5
           underlying="$tree/$name"
           sha=a13dd39b10b9bb1439acc3c084558599943810c9066ea946afb336c49dcf60a4
@@ -38,9 +39,13 @@ jobs:
             echo "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa  $underlying" | sha256sum -c -
             sha=57e6727b89cea5c7214d1c2edcc966918623e7dbec9e37f30c713df68e63f46e
           fi
-          "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$underlying" "$result/hybrid.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/weights.json"
+          "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$underlying" "$result/framed.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/framed.json"
+          echo "$sha  $result/framed.c5" | sha256sum -c -
+          "$RUNNER_TEMP/env/bin/python" research/ans/chain_weights.py "$underlying" "$result/framed.c5" \
+            "$result/matrix" "$result/chain-matrix" "$result/hybrid.c5" >"$result/weights.json"
+          sha=4812ae35227511c9f6adbf6e2a7e3e6f15ab8a3ade58240f43ea7930bb4edbdf
           echo "$sha  $result/hybrid.c5" | sha256sum -c -
-          "$RUNNER_TEMP/env/bin/python" research/ans/stage_hybrid.py "$tree" "$result/hybrid.c5" "$sha" "$result/matrix" --reference "$underlying"
+          "$RUNNER_TEMP/env/bin/python" research/ans/stage_hybrid.py "$tree" "$result/hybrid.c5" "$sha" "$result/chain-matrix" --reference "$underlying"
       - name: Build with pinned dependencies in an offline container
         run: |
           tool="$RUNNER_TEMP/base-image"; mkdir "$tool"

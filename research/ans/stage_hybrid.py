@@ -3,8 +3,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import shutil
-import struct
-from hybrid_weights import HEADER, MAGIC, unpack
+from chain_weights import MAGIC, unpack
 
 WEIGHTS="weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5"
 ORIGINAL="0xaec368ac6a568632ULL"
@@ -20,16 +19,7 @@ def install(root,weights,sha,codec,reference):
     raw=weights.read_bytes()
     if hashlib.sha256(raw).hexdigest()!=sha or raw[:8]!=MAGIC:
         raise ValueError("hybrid weight fingerprint or magic differs")
-    _,count,_,n,m=HEADER.unpack_from(raw,8)
-    cursor=8+HEADER.size+n
-    end=cursor+m
-    last=-1
-    while cursor<end:
-        i,size=struct.unpack_from("<HI",raw,cursor);cursor+=6
-        if not last<i<count or size<6 or raw[cursor]!=0 or cursor+size>end:
-            raise ValueError("the release reader accepts ordered adaptive rANS frames")
-        last=i;cursor+=size
-    if not 0<end<=len(raw) or end!=cursor or unpack(raw,codec)!=reference.read_bytes():
+    if unpack(raw,codec)!=reference.read_bytes():
         raise ValueError("decoded hybrid differs from the reference NP2")
     fingerprint=14695981039346656037
     for byte in raw:
@@ -39,7 +29,14 @@ def install(root,weights,sha,codec,reference):
     text=once(reader.read_text(), '#include "weights_io.h"', '#include "weights_io.h"\n#include "residual_matrix.h"')
     text=once(text,"const uint32_t nA = r.u32(), lenA = r.u32(), K = r.u32();","""const uint32_t nA = r.u32(), K = r.u32(), lenA = r.u32(), extra = r.u32();
   r.need(size_t(lenA) + extra);
-  Reader frames{r.p + lenA, extra, path};
+  Reader section{r.p + lenA, extra, path};
+  uint16_t count_external;
+  section.read(&count_external,sizeof(count_external));
+  section.need(2*size_t(count_external)+4);
+  const uint8_t* directory = section.p;
+  const uint8_t* after_directory = directory + 2*count_external;
+  uint32_t next_external = count_external ? directory[0] : nA;
+  matrix_ans::Reader chain(after_directory,section.left-2*count_external);
   const size_t tail_offset = size_t(lenA) + extra;""")
     text=once(text,"(r.left - lenA)","(r.left - tail_offset)")
     text=once(text,"r.p + lenA, r.left - lenA","r.p + tail_offset, r.left - tail_offset")
@@ -57,23 +54,12 @@ def install(root,weights,sha,codec,reference):
       n->n1 = uint16_t(n->n1 >> 1 ? n->n1 >> 1 : 1);
     }""","    observe(n, bit, limit);")
     text=once(text,"        uint64_t* cs =","""        bool external = false;
-        if (frames.left) {
-          frames.need(6);
-          uint16_t id;
-          std::memcpy(&id, frames.p, 2);
-          if (id < i) msg_stop(235);
-          if (id == i) {
-            frames.read(&id,2);
-            uint32_t length = frames.u32();
-            frames.need(length);
-            if (length < 6 || frames.p[0] != 0 || frames.p[1] >= 32 || t.ndim != 2) msg_stop(235);
-            matrix_ans::Reader input(frames.p + 2,length - 2);
-            matrix_ans::selected_pass(out,rows,cols,frames.p[1],input);
-            input.finish();
-            frames.p += length;
-            frames.left -= length;
-            external = true;
-          }
+        if (i == next_external) {
+          if (directory == after_directory || directory[1]>=32 || t.ndim!=2) msg_stop(235);
+          matrix_ans::selected_pass(out,rows,cols,directory[1],chain);
+          directory+=2;
+          next_external=directory==after_directory ? nA : i+directory[0];
+          external=true;
         }
         uint64_t* cs =""")
     text=once(text,"          if (dec.decode_cbit(&m->zrow, CNT_LIMIT_ZROW)) continue;","""          if (external) {
@@ -92,7 +78,7 @@ def install(root,weights,sha,codec,reference):
                 node = node*2 + bit;
               }
             } else v = int(dec.decode_ctree(nodes,4,CNT_LIMIT_INT4W)) - 7;""")
-    text=once(text,"  if (n_cn != size_t(kNamenN)", "  if (frames.left) msg_stop(235);\n  if (n_cn != size_t(kNamenN)")
+    text=once(text,"  if (n_cn != size_t(kNamenN)", "  if (directory!=after_directory) msg_stop(235);\n  chain.finish();\n  if (n_cn != size_t(kNamenN)")
     text=once(text,ORIGINAL,code)
     extra={}
     for path,num in (("src/transformer.h",1),("src/tf1/weights_io.h",2)):
