@@ -36,6 +36,9 @@ jobs:
           curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o published.archive
           python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload published.archive
           "$RUNNER_TEMP/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/cache_study.py" ./cmix published.payload results --minutes 310 --schedule "$SCHEDULE"
+      - name: Measure exact context agreement on held-out cache lookups
+        run: |
+          "$RUNNER_TEMP/env/bin/python" research/quant/cache_suffix.py "$RUNNER_TEMP/cache-native" "$SCHEDULE"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

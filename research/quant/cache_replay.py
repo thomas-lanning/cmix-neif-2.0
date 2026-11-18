@@ -9,6 +9,7 @@ import numpy as np
 import cache_metric
 
 CANDIDATE=np.dtype([("id","<u4"),("value","u1"),("original","i1",128),("packed","u1",64)])
+POSITIONED=np.dtype([("id","<u4"),("position","<u4"),*CANDIDATE.descr[1:]])
 MIX=np.array([.05,.15,.30])
 METHODS=("original","int8","clip","angle","levels","two-blocks","four-blocks",
          "project-quarter","project-half","project-three-quarters","metric-8","metric-32")
@@ -23,7 +24,9 @@ def load(path,receipt,canonical):
     if digest(path)!=info["trace_sha256"] or path.stat().st_size!=info["trace_bytes"]:
         raise ValueError("cache trace differs from its archive-verified receipt")
     raw=path.read_bytes()
-    if raw[:8]!=b"NCACHE01":raise ValueError("unknown cache trace")
+    formats={b"NCACHE01":CANDIDATE,b"NCACHE02":POSITIONED}
+    if raw[:8] not in formats:raise ValueError("unknown cache trace")
+    layout=formats[raw[:8]]
     offset=8;rows=[]
     corpus=np.memmap(canonical,dtype="u1",mode="r")
     while offset<len(raw):
@@ -36,7 +39,7 @@ def load(path,receipt,canonical):
             offset+=v.nbytes
             return v
         q=take("i1",128).astype(np.float64);tf=take("<f4",256).astype(np.float64)
-        cand=take(CANDIDATE,n)
+        cand=take(layout,n)
         ids=take("<u4",k);cos=take("<f8",k)
         target=raw[offset];offset+=1
         keys=cand["original"].copy();packed=cand["packed"]
@@ -53,7 +56,9 @@ def load(path,receipt,canonical):
             raise ValueError("native ranking or cosine not reproduced")
         if not np.isfinite(tf).all() or tf.min()<0 or tf.sum()<=0:raise ValueError("invalid transformer probability")
         rows.append(dict(pos=pos,q=q,x=keys,values=cand["value"].copy(),native=native_indices,
+                         ring_ids=cand["id"].copy(),
                          target=target,tf=float(tf[target]/tf.sum()),native_scores=cos.copy()))
+        if layout==POSITIONED:rows[-1]["positions"]=cand["position"].astype(np.int64)
     if len(rows)!=info["sampled_queries"] or len(rows)<48:
         raise ValueError("insufficient complete sampled queries")
     # Validate the target coordinate independently. Uniqueness guards against
@@ -62,6 +67,13 @@ def load(path,receipt,canonical):
     targets=np.array([r["target"] for r in rows])
     shifts=[d for d in range(-8,9) if np.array_equal(corpus[positions+d],targets)]
     if len(shifts)!=1:raise ValueError("target positions differ from canonical bytes")
+    if layout==POSITIONED:
+        for row in rows:
+            old=row["positions"]
+            if np.any(old+1024>row["pos"]) or np.any(old+shifts[0]<0):
+                raise ValueError("noncausal position in cache trace")
+            if not np.array_equal(corpus[old+shifts[0]],row["values"]):
+                raise ValueError("cached symbol does not match independently decoded position")
     return rows,info,shifts[0]
 
 

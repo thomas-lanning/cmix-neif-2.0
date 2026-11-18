@@ -42,13 +42,13 @@ __attribute__((noinline)) static void sample(uint64_t pos,const semantic_cache::
   FILE*& f=output[group];
   if (!f) {
     char name[64];std::snprintf(name,sizeof name,"cache-%u.bin",starts[group]);
-    f=std::fopen(name,"wb");put(f,"NCACHE01",8);
+    f=std::fopen(name,"wb");put(f,"NCACHE02",8);
   }
   uint32_t meta[]={uint32_t(pos),uint32_t(n),uint32_t(k)};
   put(f,meta,sizeof meta);put(f,s.ck,kD);put(f,transformer,256*sizeof(float));
   for (int j=0;j<n;++j) {
     uint32_t ri=ids[j]&(kN-1);
-    put(f,&ri,4);put(f,&s.val[ri],1);put(f,shadow+size_t(ri)*kD,kD);
+    put(f,&ri,4);put(f,&s.epos[ri],4);put(f,&s.val[ri],1);put(f,shadow+size_t(ri)*kD,kD);
     put(f,s.key+size_t(ri)*kKB,kKB);
   }
   put(f,top,4*k);put(f,similarities,sizeof(double)*k);
