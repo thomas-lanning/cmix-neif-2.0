@@ -1,0 +1,30 @@
+name: Export isolated Ubuntu release toolchain
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  toolchain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install upstream dependencies into a disposable filesystem
+        run: |
+          id=$(docker create -v "$PWD/install.sh:/install.sh:ro" ubuntu:24.04 bash /install.sh)
+          docker start -a "$id" >"$RUNNER_TEMP/toolchain.log" 2>&1
+          test "$(docker inspect -f '{{.State.ExitCode}}' "$id")" = 0
+          docker export "$id" | zstd -T2 -5 -q -o "$RUNNER_TEMP/toolchain.tar.zst"
+          cd "$RUNNER_TEMP"
+          sha256sum toolchain.tar.zst > toolchain.sha256
+          cat toolchain.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isolated-release-toolchain
+          path: |
+            ${{ runner.temp }}/toolchain.tar.zst
+            ${{ runner.temp }}/toolchain.sha256
+            ${{ runner.temp }}/toolchain.log
+          compression-level: 0
+          retention-days: 3
