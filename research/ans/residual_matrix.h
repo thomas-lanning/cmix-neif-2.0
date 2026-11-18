@@ -20,9 +20,45 @@ struct Residual {
 };
 using RTree=std::array<Residual,19>;
 using CTree=std::array<Count,19>;
+// The offline packer searches preceding rows. The decoder reads the chosen
+// address and orientation before predicting any symbols in the current row.
+template<class Codec> int row_reference(int8_t* q,size_t rows,size_t cols,size_t i,
+                                       bool transposed,unsigned threshold,Count& flag,Codec& codec) {
+  if (!i) return 0;
+  auto value=[&](size_t row,size_t col){return int(q[transposed?col*rows+row:row*cols+col]);};
+  size_t chosen=0;
+  bool enabled=false,negative=false;
+  if constexpr(std::is_same_v<Codec,Writer>) {
+    int64_t current=0,best_dot=0,best_energy=1;
+    for (size_t k=0;k<cols;++k) {const int v=value(i,k);current+=v*v;}
+    for (size_t j=0;j<i;++j) {
+      int64_t dot=0,energy=0;
+      for (size_t k=0;k<cols;++k) {
+        const int a=value(j,k);dot+=a*value(i,k);energy+=a*a;
+      }
+      if (energy && dot*dot*best_energy>best_dot*best_dot*energy) {
+        chosen=j;best_dot=dot;best_energy=energy;
+      }
+    }
+    enabled=best_dot*best_dot*10000>current*best_energy*threshold*threshold;
+    negative=best_dot<0;
+  }
+  unsigned use=codec.bit(bounded(flag.predict(total/2,4)),enabled);flag.update(use);
+  if (!use) return 0;
+  // Truncated binary represents exactly i alternative ancestors.
+  unsigned width=31u-__builtin_clz(unsigned(i)),cutoff=(2u<<width)-unsigned(i);
+  unsigned code=chosen<cutoff ? unsigned(chosen):unsigned(chosen)+cutoff;
+  unsigned n=width+unsigned(chosen>=cutoff),prefix=0;
+  for (unsigned k=0;k<width;++k) prefix=prefix*2+codec.bit(total/2,(code>>(n-1-k))&1);
+  if (prefix>=cutoff) prefix=prefix*2+codec.bit(total/2,code&1)-cutoff;
+  unsigned flip=codec.bit(total/2,negative);check(prefix<i);
+  return flip?-int(prefix+1):int(prefix+1);
+}
+
 // Condition the next bit on the discrepancy between predicted and observed row/column counts.
 template<class Codec>
 void pass(int8_t* weights,size_t rows,size_t cols,unsigned mode,Codec& codec) {
+  const bool neighbour=mode>=16;
   const bool transpose=mode&8;
   if(transpose)std::swap(rows,cols);
   const unsigned variant=mode&7;
@@ -30,7 +66,8 @@ void pass(int8_t* weights,size_t rows,size_t cols,unsigned mode,Codec& codec) {
   const std::array<unsigned,8> order=(variant&1)?std::array<unsigned,8>{0,7,1,2,3,4,5,6}:std::array<unsigned,8>{0,1,2,3,4,5,6,7};
   unsigned index[8];for(unsigned i=0;i<8;++i)index[order[i]]=i;
   CTree global{};std::array<CTree,24> width_ctx{};
-  Count empty_rows{};
+  Count empty_rows{},reference_flag{};
+  std::array<RTree,15> related{};
   std::vector<RTree> col(cols);std::vector<unsigned> col_abs(cols);
   std::vector<CTree> lag(16);
   uint64_t abs_sum=0,count=0;
@@ -42,6 +79,11 @@ void pass(int8_t* weights,size_t rows,size_t cols,unsigned mode,Codec& codec) {
     }
     unsigned empty=codec.bit(bounded(empty_rows.predict(total-32,2)),all_zero);
     empty_rows.update(empty);
+    int ancestor=0;
+    if (neighbour && !empty) {
+      check(rows<=256 && cols<=256);
+      ancestor=row_reference(weights,rows,cols,i,transpose,(variant&4)?42:22,reference_flag,codec);
+    }
     RTree row{}; unsigned row_abs=0;int previous=0;
     for(size_t j=0;j<cols;++j) {
       size_t at=offset(j);
@@ -51,6 +93,11 @@ void pass(int8_t* weights,size_t rows,size_t cols,unsigned mode,Codec& codec) {
       unsigned r=unsigned((row_abs*256+16*mean)/(j+16));
       unsigned c=unsigned((col_abs[j]*256+16*mean)/(i+16));
       auto width=std::clamp(unsigned(8ull*r*c/(std::max(1u,mean)*256)),8u,31u)-8;
+      int neighbour_value=0;
+      if (ancestor) {
+        const size_t ref=unsigned(std::abs(ancestor)-1);
+        neighbour_value=weights[transpose?j*rows+ref:ref*cols+j]*(ancestor<0?-1:1);
+      }
       auto event=[&](unsigned node,unsigned observed){
         auto& g=global[node];auto& w=width_ctx[width][node];
         auto& l=lag[previous+7][node];
@@ -59,7 +106,11 @@ void pass(int8_t* weights,size_t rows,size_t cols,unsigned mode,Codec& codec) {
         unsigned pr=row[node].predict(base,prior_strength);
         unsigned pc=col[j][node].predict(base,prior_strength);
         unsigned p=bounded((3*odds(pr,pc,base)+base)/4);
+        unsigned before_neighbour=p;
+        auto& cell=related[neighbour_value+7][node];
+        if (ancestor) p=cell.predict(p,prior_strength);
         unsigned b=codec.bit(p,observed);
+        if (ancestor) cell.update(b,before_neighbour);
         g.update(b);w.update(b);l.update(b);row[node].update(b,base);col[j][node].update(b,base);
         return b;
       };

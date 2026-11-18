@@ -32,7 +32,7 @@ def pack(source,legacy,matrix_tool,chain_tool):
     pos=begin
     while pos<begin+flen:
         i,n=struct.unpack_from("<HI",legacy,pos);pos+=6
-        if i in modes or legacy[pos]!=0 or legacy[pos+1]>=32 or n<6:
+        if i in modes or legacy[pos]!=0 or legacy[pos+1]>=48 or n<6:
             raise ValueError("expected an ordered adaptive matrix package")
         modes[i]=legacy[pos+1]
         pos+=n
@@ -69,7 +69,7 @@ def unpack(data,tool):
     for j in range(n):
         gap,mode=struct.unpack_from("<BB",section,2+j*2)
         i+=gap
-        if i>=count or i in modes or mode>=32:
+        if i>=count or i in modes or mode>=48:
             raise ValueError("bad tensor directory")
         modes[i]=mode
     pos=2+2*n

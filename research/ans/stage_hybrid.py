@@ -55,7 +55,7 @@ def install(root,weights,sha,codec,reference):
     }""","    observe(n, bit, limit);")
     text=once(text,"        uint64_t* cs =","""        bool external = false;
         if (i == next_external) {
-          if (directory == after_directory || directory[1]>=32 || t.ndim!=2) msg_stop(235);
+          if (directory == after_directory || directory[1]>=48 || t.ndim!=2) msg_stop(235);
           matrix_ans::selected_pass(out,rows,cols,directory[1],chain);
           directory+=2;
           next_external=directory==after_directory ? nA : i+directory[0];

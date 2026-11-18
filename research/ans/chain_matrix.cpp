@@ -10,7 +10,7 @@ int main(int argc,char** argv) {
   size_t rows=std::strtoul(argv[2],nullptr,10), cols=std::strtoul(argv[3],nullptr,10);
   unsigned mode=std::strtoul(argv[6],nullptr,10);
   uint32_t state=uint32_t(std::strtoul(argv[7],nullptr,10));
-  check(rows && cols && rows<=65536 && cols<=65536 && rows*cols<=16000000 && mode<32 && state>=lower);
+  check(rows && cols && rows<=65536 && cols<=65536 && rows*cols<=16000000 && mode<48 && state>=lower);
   FILE* in=std::fopen(argv[4],"rb");
   FILE* out=std::fopen(argv[5],"wb");
   check(in && out);

@@ -15,7 +15,8 @@ int main(int argc,char** argv) {
   if (!std::strcmp(argv[1],"encode")) {
     check(std::fread(q.data(),1,q.size(),in)==q.size() && std::getc(in)==EOF);
     for(int v:q) check(v>=-7 && v<=7);
-    for (unsigned mode=0; mode<32; ++mode) {
+    for (unsigned mode=0; mode<48; ++mode) {
+      if (mode>=32 && (rows>256 || cols>256 || rows<64 || cols<64)) continue;
       if (mode<16 && ((mode&7)==4 || (mode&7)==6)) continue;
       Writer writer;
       selected_pass(q.data(),rows,cols,mode,writer);
@@ -31,7 +32,7 @@ int main(int argc,char** argv) {
   } else if (!std::strcmp(argv[1],"decode")) {
     int ch;
     while ((ch=std::getc(in))!=EOF) encoded.push_back(uint8_t(ch));
-    check(encoded.size()>=5 && encoded[0]<32);
+    check(encoded.size()>=5 && encoded[0]<48);
     Reader reader(encoded.data()+1,encoded.size()-1);
     selected_pass(q.data(),rows,cols,encoded[0],reader);reader.finish();
   } else return 2;
