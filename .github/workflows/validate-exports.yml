@@ -1,0 +1,59 @@
+name: Validate frozen quantization exports on 48 independent articles
+on:
+  workflow_dispatch:
+    inputs:
+      fixture_run:
+        description: Successful portable benchmark built with include_validation
+        type: string
+        required: true
+      exports_run:
+        description: Completed quick-screen workflow run
+        type: string
+        required: true
+      artifact_name:
+        description: Quick-screen results and retained weights
+        type: choice
+        options: [quantization-trial, cpu-fisher-trial]
+  workflow_call:
+    inputs:
+      fixture_run: {type: string, required: true}
+      exports_run: {type: string, required: true}
+      artifact_name: {type: string, required: true}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: validation-c40
+          run-id: ${{ inputs.fixture_run }}
+          path: ${{ runner.temp }}/validation-kit
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.exports_run }}
+          path: ${{ runner.temp }}/exports
+      - name: Freeze the qualifying exports and replay them on separate articles
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/independent"; mkdir "$d"
+          tar -C "$d" -xzf "$RUNNER_TEMP/validation-kit/c40-validation.tar.gz" ./suite
+          research/quant/build.sh "$d/replay"
+          python3 -m venv "$d/env"; "$d/env/bin/pip" install --quiet numpy==2.2.6
+          "$d/env/bin/python" research/quant/validate_exports.py "$d/replay" "$d/suite" \
+            "$RUNNER_TEMP/exports" "$d/results"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-quantization-results
+          path: ${{ runner.temp }}/independent/results/
+          retention-days: 30
