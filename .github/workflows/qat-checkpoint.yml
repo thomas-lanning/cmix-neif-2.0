@@ -1,0 +1,61 @@
+name: Recover and verify the trainable checkpoint on CPU
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  convert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "1"
+      PIP_NO_CACHE_DIR: "1"
+      WANDB_MODE: offline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Assemble the released trainer and its CPU conversion dependencies
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/env"
+          py="$RUNNER_TEMP/env/bin/python"
+          "$py" -m pip install --quiet torch==2.12.1 --index-url https://download.pytorch.org/whl/cpu
+          "$py" -m pip install --quiet numpy==2.4.6 triton==3.7.1 flash-linear-attention==0.5.1 jaxtyping pytorch-optimizer tqdm wandb python-dotenv
+          cp -a training/tf/tree_upstream "$RUNNER_TEMP/trainer"
+          cp -a training/tf/tree_overlay/. "$RUNNER_TEMP/trainer/"
+          "$py" training/tf/2_package/patch_paket11.py "$RUNNER_TEMP/trainer"
+      - name: Recover model parameters and check the trainer's integer weights
+        run: |
+          set -euo pipefail
+          export TFT_TREE="$RUNNER_TEMP/trainer"
+          py="$RUNNER_TEMP/env/bin/python"
+          out="$RUNNER_TEMP/checkpoint"
+          mkdir "$out"
+          "$py" research/quant/qat_seed.py "$out/plain.c5" >"$out/container.json"
+          echo "26e572080c240b6c8eb59a8dc8aab6ab6591efac695424f5942abf1d8fdde712  $out/plain.c5" | sha256sum -c -
+          "$py" training/tf/3_train/container_to_tch.py --container "$out/plain.c5" \
+            --cfg training/tf/3_train/chain/06_qat.json --strict "$out/strict.tch" \
+            --qrow "$out/row-ranges.npz" --report "$out/conversion.json"
+          "$py" - "$out/conversion.json" <<'PY'
+          import json, sys
+          report=json.load(open(sys.argv[1]))
+          assert report["n_container_tensors"] == 597
+          assert report["int_check"]["tensors"] > 100 and report["int_check"]["mismatch"] == 0
+          print(report["int_check"])
+          PY
+          (cd "$out" && sha256sum strict.tch row-ranges.npz > files.sha256)
+          "$py" -m pip freeze > "$out/environment.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quantization-aware-start
+          path: |
+            ${{ runner.temp }}/checkpoint/strict.tch
+            ${{ runner.temp }}/checkpoint/row-ranges.npz
+            ${{ runner.temp }}/checkpoint/*.json
+            ${{ runner.temp }}/checkpoint/files.sha256
+            ${{ runner.temp }}/checkpoint/environment.txt
+          retention-days: 30
