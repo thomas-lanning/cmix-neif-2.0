@@ -2,6 +2,9 @@ name: Fit and validate a quantized correction to native byte probabilities
 on:
   workflow_dispatch:
     inputs:
+      training_run:
+        description: Optional build with 96 disjoint fit articles and the 48-article verification suite
+        type: string
       fixture_run:
         description: Successful portable C40 workflow run
         required: true
@@ -23,6 +26,20 @@ jobs:
           run-id: ${{ inputs.fixture_run }}
           name: portable-c40
           path: ${{ runner.temp }}/kit
+      - uses: actions/download-artifact@v4
+        if: inputs.training_run != ''
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.training_run }}
+          name: training-c40
+          path: ${{ runner.temp }}/training-kit
+      - uses: actions/download-artifact@v4
+        if: inputs.training_run != ''
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.training_run }}
+          name: validation-c40
+          path: ${{ runner.temp }}/validation-kit
       - name: Collect native scores and evaluate untouched articles
         env:
           OPENBLAS_NUM_THREADS: "1"
@@ -45,3 +62,25 @@ jobs:
             ${{ runner.temp }}/experiment/quantized.json
             ${{ runner.temp }}/experiment/profile.tar.gz
           retention-days: 14
+      - name: Fit a quantized byte-class correction and measure it on independent article sets
+        if: inputs.training_run != ''
+        env:
+          OPENBLAS_NUM_THREADS: "2"
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/experiment"; mkdir "$d/independent"
+          tar -C "$d" -xzf "$RUNNER_TEMP/training-kit/c40-training.tar.gz"
+          tar -C "$d/independent" -xzf "$RUNNER_TEMP/validation-kit/c40-validation.tar.gz"
+          py="$d/env/bin/python"
+          "$py" research/quant/head_fit.py collect "$d/head" "$d/training" weights-*.c5 "$d/training-profile"
+          "$py" research/quant/head_fit.py collect "$d/head" "$d/independent/suite" weights-*.c5 "$d/validation-profile"
+          "$py" research/quant/byte_calibration.py "$d/training" "$d/training-profile" "$d/byte-table.json" \
+            --screen "$d/suite" --screen-profile "$d/profile" --validation "$d/independent/suite" --validation-profile "$d/validation-profile"
+      - uses: actions/upload-artifact@v4
+        if: inputs.training_run != ''
+        with:
+          name: independent-byte-calibration
+          path: |
+            ${{ runner.temp }}/experiment/byte-table.json
+            ${{ runner.temp }}/experiment/*-profile/manifest.json
+          retention-days: 30

@@ -144,5 +144,193 @@
       4,
       39250
     ]
+  },
+  "independent_fixture": {
+    "run": 44240914306,
+    "documents": 48,
+    "targets": 123550,
+    "rows": 153242,
+    "manifest_sha256": "1f3c8d35380c9762babc40a11710098fc979e5eb37f0d21078ae86e1c3a85713",
+    "kit_sha256": "e9d5af034ecfb21a7e879c33a59fdb129650fd078a33ca44734a3ca4a99fa4f3",
+    "disjoint_from_quick": true
+  },
+  "equivalent_control": {
+    "run": 44244544160,
+    "exporter_commit": "04b3b860259f1f40b0d2705cb6530b3f60b06b90",
+    "validation_suite": "1f3c8d35380c9762babc40a11710098fc979e5eb37f0d21078ae86e1c3a85713",
+    "ranking_transfer": 0.7481182829674354,
+    "quick_trials": 1,
+    "outcomes": [
+      {
+        "candidate_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+        "suite_sha256": "1f3c8d35380c9762babc40a11710098fc979e5eb37f0d21078ae86e1c3a85713",
+        "documents": 48,
+        "targets": 123550,
+        "improved_documents": 0,
+        "tied_documents": 48,
+        "bits_per_target_equal_document": 0.0,
+        "bits_per_target_token_weighted": 0.0,
+        "weight_delta_both_copies": -692,
+        "measured_transfer_assumption": 0.7481182829674354,
+        "projected_entry_delta_bytes": -692.0,
+        "article_resampling_95_percentile_bytes": [
+          -692.0,
+          -692.0
+        ]
+      }
+    ]
+  },
+  "cpu_fisher": {
+    "run": 44241959555,
+    "alignment": [
+      {
+        "document": 27,
+        "fed": 391,
+        "scored": 64,
+        "native_to_training_mean_kl_nats": 0.0024687149266611756,
+        "top1_agreement": 0.984375
+      },
+      {
+        "document": 335,
+        "fed": 399,
+        "scored": 64,
+        "native_to_training_mean_kl_nats": 0.0011836096266715722,
+        "top1_agreement": 1.0
+      },
+      {
+        "document": 1659,
+        "fed": 335,
+        "scored": 64,
+        "native_to_training_mean_kl_nats": 0.001327977713091761,
+        "top1_agreement": 1.0
+      },
+      {
+        "document": 2832,
+        "fed": 430,
+        "scored": 64,
+        "native_to_training_mean_kl_nats": 0.0019290372742393376,
+        "top1_agreement": 1.0
+      },
+      {
+        "document": 3636,
+        "fed": 329,
+        "scored": 64,
+        "native_to_training_mean_kl_nats": 0.0005721675461647198,
+        "top1_agreement": 1.0
+      },
+      {
+        "document": 4420,
+        "fed": 394,
+        "scored": 64,
+        "native_to_training_mean_kl_nats": 0.0008269065097887694,
+        "top1_agreement": 1.0
+      }
+    ],
+    "measurements": [
+      {
+        "label": "cpu-fisher-8",
+        "candidate_sha256": "b4675c05ed694b31b1fe0ee1c675f88580e1c57b255f2aec6ced8af45439c6ee",
+        "twice_weight_delta": -454,
+        "search_proxy_bytes": 26846.738157064254,
+        "confirmation_proxy_bytes": -18530.734692962,
+        "replay_seconds": 18.644551266999997
+      },
+      {
+        "label": "cpu-fisher-32",
+        "candidate_sha256": "324b082a3dd565c16540e70680b9fc05fe7de972dd7fa63dc893b41227c75f1e",
+        "twice_weight_delta": -2076,
+        "search_proxy_bytes": 24385.74704850099,
+        "confirmation_proxy_bytes": 2303.030315906085,
+        "replay_seconds": 18.069747871999994
+      },
+      {
+        "label": "cpu-fisher-128",
+        "candidate_sha256": "01d23aa789b3ad871c3dcf2af57d057302ca22a81cb9bd0d40f7d31be6b190d4",
+        "twice_weight_delta": -8660,
+        "search_proxy_bytes": 3267.6499868498195,
+        "confirmation_proxy_bytes": 85221.71201061536,
+        "replay_seconds": 18.489564613000084
+      }
+    ]
+  },
+  "quantization_aware_pilot": {
+    "run": 44243754538,
+    "steps_per_budget": 96,
+    "fit_crops": 48,
+    "fit_documents": 4,
+    "selection_crops": 8,
+    "selection_documents": 2,
+    "measurements": [
+      {
+        "label": "qat-initial-32",
+        "candidate_sha256": "324b082a3dd565c16540e70680b9fc05fe7de972dd7fa63dc893b41227c75f1e",
+        "twice_weight_delta": -2076,
+        "search_proxy_bytes": 24385.74704850099,
+        "confirmation_proxy_bytes": 2303.030315906085,
+        "replay_seconds": 21.378957046000096
+      },
+      {
+        "label": "qat-distilled-32",
+        "candidate_sha256": "59a5eb013a9d87b89c334d4d56aadf114531f369776655a64000bd4b148c61f0",
+        "twice_weight_delta": -1728,
+        "search_proxy_bytes": 5420.686884834357,
+        "confirmation_proxy_bytes": -19639.26244358231,
+        "replay_seconds": 21.34059520099993
+      },
+      {
+        "label": "qat-initial-256",
+        "candidate_sha256": "e07909d6f697db5d8d8d29cd75728d4caf6686de4723962a18268249f8407447",
+        "twice_weight_delta": -17842,
+        "search_proxy_bytes": 43955.74442296941,
+        "confirmation_proxy_bytes": 120993.57927165733,
+        "replay_seconds": 21.214573280999957
+      }
+    ],
+    "losses": [
+      {
+        "rows": 32,
+        "steps": 96,
+        "initial_kl": 0.0017338383622700348,
+        "best_kl": 0.0013871969422325492,
+        "best_step": 64
+      },
+      {
+        "rows": 256,
+        "steps": 96,
+        "initial_kl": 0.002603806395200081,
+        "best_kl": 0.002603806395200081,
+        "best_step": 0
+      }
+    ]
+  },
+  "cache_early": {
+    "run": 44234983659,
+    "selection": "four-blocks",
+    "fit_queries": 1152,
+    "selection_queries": 384,
+    "mixture": 0.15,
+    "chronological_spans": [
+      {
+        "start": 15400000,
+        "role": "train",
+        "queries": 1536,
+        "canonical_sha256": "a99bd8eb48c8572e0f9ca310df9d76e90b3518d2d8dd6aca07589af67d79e32a",
+        "delta_bits": -3.2746643459258675
+      },
+      {
+        "start": 16400000,
+        "role": "test",
+        "queries": 1536,
+        "canonical_sha256": "b29201554b8c84c31ea739aeb979559de64bb63553796b87cca57d9757ea39bb",
+        "delta_bits": 0.21218974561206427
+      },
+      {
+        "start": 17400000,
+        "role": "test",
+        "queries": 1536,
+        "canonical_sha256": "ab41f3c44d66fc49d7d9eba31c5ee3e2794fc99e2d3b6fe9d1f431af16f977a7",
+        "delta_bits": 2.084964812528191
+      }
+    ]
   }
 }
