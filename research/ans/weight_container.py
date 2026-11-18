@@ -65,18 +65,33 @@ def decode(data, n, freq):
     return np.frombuffer(raw,dtype="i1") - 7
 
 
-def pack(tensors):
+def pack(tensors, row_model=False):
     descriptors, weights, other = [], bytearray(), bytearray()
     for t in tensors:
         a = t.a
         if t.name in ("rope.sin","rope.cos"):
             mode, extra = "rope", None
         elif t.code == 0 and a.size and a.min() >= -7 and a.max() <= 7:
-            ids=(a.ravel()+7).astype("u1")
-            freq=frequencies(ids)
-            data=encode(ids,freq)
-            weights.extend(data)
-            mode,extra="ans",[len(data),freq]
+            rows=t.m2()
+            peak=np.abs(rows).max(axis=1)
+            labels=np.searchsorted([0,1,3],peak).astype("u1")
+            if row_model and len(np.unique(labels))>1 and np.count_nonzero(peak<=3)>=16:
+                other.extend(labels.tobytes())
+                mode,extra="rows",[]
+                for k in (1,2,3):
+                    ids=(rows[labels==k].ravel()+7).astype("u1")
+                    if not len(ids):
+                        continue
+                    freq=frequencies(ids)
+                    data=encode(ids,freq)
+                    weights.extend(data)
+                    extra.append([k,len(data),freq])
+            else:
+                ids=(a.ravel()+7).astype("u1")
+                freq=frequencies(ids)
+                data=encode(ids,freq)
+                weights.extend(data)
+                mode,extra="ans",[len(data),freq]
         else:
             mode="bytes"
             b=a
@@ -110,6 +125,19 @@ def unpack(data):
             size,freq=extra
             a=decode(data[wpos:wpos+size],count,freq)
             wpos+=size
+        elif mode=="rows":
+            nrows=shape[0] if len(shape)>1 else 1
+            labels=np.frombuffer(side[spos:spos+nrows],dtype="u1")
+            spos+=nrows
+            a=np.zeros((nrows,count//nrows),dtype="i1")
+            expected=set(np.unique(labels))-{0}
+            if expected!={e[0] for e in extra}:
+                raise ValueError("row type and frequency frames disagree")
+            for k,size,freq in extra:
+                which=labels==k
+                n=int(which.sum())*a.shape[1]
+                a[which]=decode(data[wpos:wpos+size],n,freq).reshape(-1,a.shape[1])
+                wpos+=size
         else:
             dt=np.dtype("<u2" if mode=="high16" else DTYPES[code])
             size=dt.itemsize*count
@@ -133,6 +161,8 @@ def main():
         sp=sub.add_parser(op)
         sp.add_argument("input",type=Path)
         sp.add_argument("output",type=Path)
+        if op=="repack":
+            sp.add_argument("--row-model",action="store_true",help="code ternary, 7-level and 15-level rows separately")
     a=p.parse_args()
     if a.output.exists():
         raise SystemExit("choose a fresh output path")
@@ -140,7 +170,7 @@ def main():
         np2.write_raw(unpack(a.input.read_bytes()),a.output)
         return
     original=np2.read_container(str(a.input))
-    encoded=pack(original)
+    encoded=pack(original,a.row_model)
     readback=unpack(encoded)
     if len(original)!=len(readback) or not all(t.same(u) for t,u in zip(original,readback)):
         raise ValueError("decoded tensors differ from published NP2")
