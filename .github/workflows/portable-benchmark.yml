@@ -91,3 +91,9 @@ jobs:
           name: training-c40
           path: ${{ runner.temp }}/research/validation/c40-training.tar.gz
           retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: inputs.include_training
+        with:
+          name: matched-interval-c40
+          path: ${{ runner.temp }}/research/validation/c40-interval.tar.gz
+          retention-days: 30

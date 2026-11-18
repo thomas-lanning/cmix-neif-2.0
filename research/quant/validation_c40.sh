@@ -18,18 +18,19 @@ if [[ ${4:-} == --training ]]; then
     --windows 24 --start 15282114 --stop 20000006 "${excluded[@]}" --plan-only
   training=(--windows 96 "${excluded[@]}" --exclude-manifest "$out/interval.json")
   python3 "$code/fixtures.py" "$first" "$out/training.json" 40000000 "${training[@]}" --plan-only
-  python3 - "$plan" "$out/training.json" "$out/union.json" <<'PY'
+  python3 - "$plan" "$out/training.json" "$out/interval.json" "$out/union.json" <<'PY'
 import json, sys
 from pathlib import Path
-a,b = (json.loads(Path(p).read_bytes()) for p in sys.argv[1:3])
-assert (a["prior_rows"],a["raw_sha256"]) == (b["prior_rows"],b["raw_sha256"])
+plans = [json.loads(Path(p).read_bytes()) for p in sys.argv[1:-1]]
+a = plans[0]
+assert all((a["prior_rows"],a["raw_sha256"]) == (p["prior_rows"],p["raw_sha256"]) for p in plans)
 spans = []
-for lo,hi in sorted(a["spans"]+b["spans"]):
+for lo,hi in sorted(span for p in plans for span in p["spans"]):
     if spans and lo <= spans[-1][1]:
         spans[-1][1] = max(hi,spans[-1][1])
     else:
         spans.append([lo,hi])
-Path(sys.argv[3]).write_text(json.dumps(dict(prior_rows=a["prior_rows"],raw_sha256=a["raw_sha256"],spans=spans)))
+Path(sys.argv[-1]).write_text(json.dumps(dict(prior_rows=a["prior_rows"],raw_sha256=a["raw_sha256"],spans=spans)))
 PY
   plan="$out/union.json"
 elif [[ $# -gt 3 ]]; then
@@ -55,4 +56,10 @@ if [[ ${4:-} == --training ]]; then
   python3 "$code/fixtures.py" "$first" "$out/training" 40000000 "${training[@]}" \
     --compact-priors "$out/selected.float16" --compact-plan "$plan"
   tar -C "$out" -czf "$out/c40-training.tar.gz" ./training
+  echo "03691cede1ada9c4b58963a8bccc6fce849d858bcffd87177ff4ec5b436350ce  $out/training/manifest.json" | sha256sum -c -
+  python3 "$code/fixtures.py" "$first" "$out/interval" 40000000 --windows 24 --start 15282114 --stop 20000006 \
+    --exclude-manifest "$first/suite/manifest.json" --exclude-manifest "$out/suite/manifest.json" \
+    --compact-priors "$out/selected.float16" --compact-plan "$plan"
+  echo "3f4052b3fab04511a2deab08d026437eb35709ab3084e95542982a5ce32f6ffd  $out/interval/manifest.json" | sha256sum -c -
+  tar -C "$out" -czf "$out/c40-interval.tar.gz" ./interval
 fi
