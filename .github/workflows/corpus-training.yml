@@ -65,3 +65,50 @@ jobs:
     uses: ./.github/workflows/large-prefix.yml
     with:
       candidate_sha256: ${{ needs.choose.outputs.model }}
+  later_articles:
+    needs: choose
+    if: needs.choose.outputs.model != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: supervised-symbol-trial
+          path: ${{ runner.temp }}/exports
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          name: late-article-benchmark
+          path: ${{ runner.temp }}/late
+      - name: Replay the frozen model on 96 later articles excluded from training
+        env:
+          MODEL: ${{ needs.choose.outputs.model }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/late"
+          tar -xzf "$d/late-enwik9-benchmark.tar.gz" -C "$d" ./sealed96
+          echo "4aaae03b731808a4cb09524a4f759cf120648a1d3549a160f7dd3a40bce4d85d  $d/sealed96/manifest.json" | sha256sum -c -
+          python3 -m venv "$d/env"; "$d/env/bin/pip" install --quiet numpy==2.2.6
+          research/quant/build.sh "$d/replay"
+          weight=$(python3 - "$RUNNER_TEMP/exports" "$MODEL" <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import sys
+          print(next(p for p in Path(sys.argv[1]).rglob('*.c5') if sha256(p.read_bytes()).hexdigest() == sys.argv[2]))
+          PY
+          )
+          "$d/env/bin/python" research/quant/evaluate.py "$d/replay" "$d/sealed96" "$weight" "$d/results" --label late96
+          alpha=$(jq -er .ranking_transfer research/quant/prefix-calibration.json)
+          "$d/env/bin/python" research/quant/paired_stats.py --transfer "$alpha" "$d/results/trials.jsonl" "$d/sealed96/manifest.json" >"$d/results/summary.json"
+          jq '{documents, targets, improved_documents, weight_delta_both_copies, projected_entry_delta_bytes}' "$d/results/summary.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frozen-model-on-96-later-articles
+          path: |
+            ${{ runner.temp }}/late/results/trials.jsonl
+            ${{ runner.temp }}/late/results/summary.json
+          retention-days: 30

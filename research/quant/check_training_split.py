@@ -5,6 +5,10 @@ from pathlib import Path
 import sys
 
 
+# Independently reconstructed from the audited, untrimmed Bonsai prior files.
+TRAINING_SHA = "91ef7f5fc3f13bfdcaea71c02cab85edd6197c10adf716cb34ad864c1867c481"
+
+
 def check(folder):
     def manifest(name):
         return json.loads((folder / name).read_bytes())
@@ -45,7 +49,7 @@ def validate_for_qat(path, quick, validation):
             quick["selection"] != "40000000" or validation["selection"] != "40000000"):
         raise ValueError("unexpected training and evaluation geometry")
     receipt = json.loads((path.parents[1] / "split-check.json").read_bytes())
-    if (receipt["training_manifest_sha256"] != hashlib.sha256(raw).hexdigest() or
+    if (receipt["training_manifest_sha256"] != TRAINING_SHA or hashlib.sha256(raw).hexdigest() != TRAINING_SHA or
             receipt["independent_documents"] != [12, 96] or receipt["training_documents"] != count):
         raise ValueError("training suite differs from its verified disjoint corpus split")
     if any(w["stream_byte"] < 45000000 for w in training["windows"]):
