@@ -1,0 +1,40 @@
+{
+  "build_run": 44243499249,
+  "build_source": "research/rans-residual",
+  "underlying_np2_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+  "weights": {
+    "original_bytes": 3744283,
+    "hybrid_bytes": 3737913,
+    "carried_permutation_bytes": 20349,
+    "replaced_tensors": 71,
+    "rans_section_bytes": 2295463,
+    "arithmetic_section_bytes": 1442086,
+    "retained_np2_tail_bytes": 336,
+    "exact_np2_roundtrip": true,
+    "hybrid_sha256": "57e6727b89cea5c7214d1c2edcc966918623e7dbec9e37f30c713df68e63f46e",
+    "original_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa"
+  },
+  "assembly": {
+    "origin": "reassembled with the published payload",
+    "reference_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "decoder_bytes": 185882,
+    "decoder_sha256": "b776979008d467d9916eda093c04b13699dc8d702ac541c03d46541559da35e2",
+    "weight_bytes": 3737913,
+    "weight_sha256": "57e6727b89cea5c7214d1c2edcc966918623e7dbec9e37f30c713df68e63f46e",
+    "payload_bytes": 85417870,
+    "payload_sha256": "fc2d8c8f824e740ec8b06fa129316043c3876027449005d58df21d0f12254b57",
+    "archive_bytes": 89341673,
+    "archive_sha256": "64178e42355758bd7596b084396f21b8a38cacd4143bbb062850c63e21551525",
+    "comp_bytes": 4037829,
+    "comp_sha256": "664509e051fffcde370cd1635eac0f01ffabce7ae01bbbc2b44bc3dd04920498",
+    "entry_bytes_if_payload_identical": 93379502
+  },
+  "prefix": {
+    "bytes": 200000,
+    "sha256": "a3781682da3dc803ae1a7ee93630b8158ad1e8a76f58af26095a5c1050d1dd9e",
+    "published_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "reassembled_archive_sha256": "64178e42355758bd7596b084396f21b8a38cacd4143bbb062850c63e21551525",
+    "self_extracting_prefix_equal": true
+  },
+  "entry_delta_with_reference_payload": -9454
+}

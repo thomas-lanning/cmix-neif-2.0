@@ -26,7 +26,8 @@ if __name__=="__main__":
     assembly=json.loads(a.assembly.read_bytes())
     here=Path(__file__).resolve().parent
     candidates=[json.loads((here/"hybrid-result.json").read_bytes())["hybrid"],
-                json.loads((here/"hybrid-sign-result.json").read_bytes())["assembly"]]
+                json.loads((here/"hybrid-sign-result.json").read_bytes())["assembly"],
+                json.loads((here/"residual-result.json").read_bytes())["assembly"]]
     if assembly not in candidates:raise ValueError("release differs from the measured candidate packages")
     image_sha=digest(a.executable)
     if a.phase=="encode":
