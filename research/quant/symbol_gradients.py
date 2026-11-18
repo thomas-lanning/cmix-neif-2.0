@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from candidate import np2
 from cpu_fisher import cpu_model, digest
 from evaluate import BASELINE, FULL_TARGETS, REFERENCE_SHA, measure
 from qat_rows import training_crops
@@ -71,6 +70,9 @@ def run(a):
     if digest(BASELINE)!=REFERENCE_SHA:
         raise ValueError("unknown reference model")
     model=cpu_model(a.checkpoint)
+    # The standalone NP2 exporter supplies a minimal pysrc module for its own imports.
+    # Initialize the full training package before loading that exporter.
+    from candidate import np2
     train_suite,(training,validation)=training_crops(a,model)
     bank=np2.read_container(str(BASELINE))
     lookup={t.name:t for t in bank}
