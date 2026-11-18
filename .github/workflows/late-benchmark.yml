@@ -1,0 +1,65 @@
+name: Rebuild the late quantization benchmark from the complete corpus
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  late:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the corpus tools and prepare the native dump
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/late"; mkdir -p "$d"/{native,bed,dump,priors}
+          python3 -m venv "$d/env"; "$d/env/bin/pip" install --quiet numpy==2.2.6
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/native" bed dump priors
+          python3 research/fetch_corpus.py "$d/enwik9"
+          cp dictionary/english.dic "$d/bed/.dict"
+          cp src/readalike_prepr/data/new_article_order "$d/bed/.new_article_order"
+          (cd "$d/bed" && "$d/native/cmix_bed" -e "$d/enwik9" out >bed.log 2>&1)
+          echo "c35d3073eeba70f22a2e08a50202b53eb95466e3e9f1f2702f6f9b3f96fd8718  $d/bed/censpruef_strom.bin" | sha256sum -c -
+          for stage in dump priors; do
+            cp "$d/bed/.dict" "$d/$stage/.dict"
+            cp "$d/bed/censpruef_vs3.bin" "$d/$stage/.vs3"
+            ln -s /dev/null "$d/$stage/aus"
+          done
+          export OMP_NUM_THREADS=1 NEIF_TF1_WEIGHTS=none
+          ln -s /dev/null "$d/dump/match-bytes.uint8"
+          ln -s /dev/null "$d/dump/match-len.uint8"
+          (cd "$d/dump" && NEIF_TF1_GATE_DUMP=/dev/null NEIF_TF1_MATCH_DUMP=./ NEIF_TF1_PAKET_DUMP=./ NEIF_TF1_SAVE_PRIORS=/dev/null \
+            "$d/native/cmix_dump" -n "$d/bed/censpruef_kanon.bin" ./aus >dump.log 2>&1)
+          "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/late12.json" full --stream-plan
+          "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/late96.json" full --windows 96 --midpoints --exclude-manifest "$d/late12.json" --stream-plan
+      - name: Hash the complete training priors while retaining the selected raw rows
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/late"; export OMP_NUM_THREADS=1 NEIF_TF1_WEIGHTS=none
+          cd "$d/priors"
+          "$d/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/late_priors.py" "$PWD" "$d/late12.json" "$d/late96.json" \
+            "$d/native/cmix_priors" -n "$d/bed/censpruef_kanon.bin" ./aus >priors.log 2>&1 || { tail -40 priors.log; exit 1; }
+      - name: Reconstruct the later articles and verify the model control
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/late"
+          options=(--compact-priors "$d/priors/selected.float16" --compact-plan "$d/priors/raw-plan.json")
+          "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/suite" full "${options[@]}"
+          "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/sealed96" full --windows 96 --midpoints --exclude-manifest "$d/suite/manifest.json" "${options[@]}"
+          research/quant/build.sh "$d/replay"
+          "$d/env/bin/python" research/quant/evaluate.py "$d/replay" "$d/suite" weights-*.c5 "$d/control" --label identity
+          tar -C "$d" -czf "$d/late-enwik9-benchmark.tar.gz" ./suite ./sealed96
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: late-article-benchmark
+          path: |
+            ${{ runner.temp }}/late/late-enwik9-benchmark.tar.gz
+            ${{ runner.temp }}/late/late*.json
+            ${{ runner.temp }}/late/priors/raw-plan.json
+            ${{ runner.temp }}/late/priors/priors.log
+            ${{ runner.temp }}/late/dump/dump.log
+            ${{ runner.temp }}/late/bed/bed.log
+            ${{ runner.temp }}/late/control/trials.jsonl
+          retention-days: 30

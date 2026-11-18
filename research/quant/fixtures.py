@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--stop", type=int, help="exclusive source position in the dump")
     parser.add_argument("--compact-priors", type=Path, help="selected binary prior rows")
     parser.add_argument("--compact-plan", type=Path, help="row ranges represented in the compact priors")
+    parser.add_argument("--stream-plan", action="store_true", help="plan in stream coordinates directly from a native dump")
     parser.add_argument("--plan-only", action="store_true", help="write selected C40 prior ranges to the output JSON")
     args = parser.parse_args()
     dump = args.scratch / "dump"
@@ -35,46 +36,60 @@ def main():
     records, header, _ = dumpv2.lade(dump / "paket-zeilen.bin")
     if not header:
         raise ValueError("v2 dump header required")
-    origins = np.memmap(priors / "ppmd-quelle.u8", dtype="u1", mode="r")
-    raw_tokens = np.memmap(priors / "ppmd-bytes.uint8", dtype="u1", mode="r")
-    if args.plan_only:
-        if args.selection != "40000000" or args.compact_plan or args.compact_priors:
-            raise ValueError("C40 prior planning uses the full token and origin files")
-        raw_prior = None
-    elif args.compact_priors:
-        from compact_priors import CompactRaster, PLAN
-        raw_prior = CompactRaster(args.compact_priors, args.compact_plan or PLAN)
-    else:
-        if args.compact_plan:
-            raise ValueError("a compact plan requires the corresponding binary prior rows")
-        raw_prior = np.memmap(priors / "ppmd-probs.float16", dtype="<u2", mode="r").reshape(-1, 208)
-    stream = np.flatnonzero(origins == 0)
     expected = 37_565_854 if args.selection == "40000000" else 501_062_287
-    if (len(stream) != expected or len(origins) != len(raw_tokens) or
-            (raw_prior is not None and len(raw_prior) != len(origins))):
-        raise ValueError("incomplete or mismatched rasters")
-    tokens = raw_tokens[stream]
-    # Check the native prior targets against the original transformed bytes (six-byte segment header).
-    bitmap = (ROOT / "training/tf/2_package/vocab-bitmap.u8").read_bytes()
-    lut = np.full(256, 255, dtype="u1")
-    vocab = [i for i in range(256) if bitmap[i//8] & (1 << (i%8))]
-    lut[vocab] = np.arange(len(vocab))
-    canonical = np.memmap(args.scratch / "bed/censpruef_strom.bin", dtype="u1", mode="r")
-    if not np.array_equal(tokens[6:], lut[canonical[:expected-6]]):
-        raise ValueError("byte-to-prior alignment differs from the canonical coder stream")
-    starts = np.flatnonzero(records["fl"] & dumpv2.DOKANFANG)
+    if args.stream_plan:
+        if args.plan_only or args.compact_plan or args.compact_priors:
+            raise ValueError("the source-coordinate plan needs only a native dump")
+    else:
+        origins = np.memmap(priors / "ppmd-quelle.u8", dtype="u1", mode="r")
+        raw_tokens = np.memmap(priors / "ppmd-bytes.uint8", dtype="u1", mode="r")
+        if args.plan_only:
+            if args.selection != "40000000" or args.compact_plan or args.compact_priors:
+                raise ValueError("C40 prior planning uses the full token and origin files")
+            raw_prior = None
+        elif args.compact_priors:
+            from compact_priors import CompactRaster, PLAN
+            raw_prior = CompactRaster(args.compact_priors, args.compact_plan or PLAN)
+        else:
+            if args.compact_plan:
+                raise ValueError("a compact plan requires the corresponding binary prior rows")
+            raw_prior = np.memmap(priors / "ppmd-probs.float16", dtype="<u2", mode="r").reshape(-1, 208)
+        stream = np.flatnonzero(origins == 0)
+        if (len(stream) != expected or len(origins) != len(raw_tokens) or
+                (raw_prior is not None and len(raw_prior) != len(origins))):
+            raise ValueError("incomplete or mismatched rasters")
+        tokens = raw_tokens[stream]
+        # Check the native prior targets against the original transformed bytes (six-byte segment header).
+        bitmap = (ROOT / "training/tf/2_package/vocab-bitmap.u8").read_bytes()
+        lut = np.full(256, 255, dtype="u1")
+        vocab = [i for i in range(256) if bitmap[i//8] & (1 << (i%8))]
+        lut[vocab] = np.arange(len(vocab))
+        canonical = np.memmap(args.scratch / "bed/censpruef_strom.bin", dtype="u1", mode="r")
+        if not np.array_equal(tokens[6:], lut[canonical[:expected-6]]):
+            raise ValueError("byte-to-prior alignment differs from the canonical coder stream")
+    # Scan blocks to avoid constructing multiple whole-corpus arrays of source positions.
+    doc_ids, doc_positions = [], []
+    last = 0
+    for lo in range(0, len(records), 1 << 20):
+        chunk = records[lo:lo+(1 << 20)]
+        ids = np.flatnonzero(chunk["fl"] & dumpv2.DOKANFANG)
+        positions = np.maximum.accumulate(np.maximum(chunk["src"], last))
+        doc_ids.append(lo+ids)
+        doc_positions.append(positions[ids])
+        last = int(positions[-1])
+    starts = np.concatenate(doc_ids)
+    src_at_start = np.concatenate(doc_positions)
     if args.windows < 12 or args.windows > 96 or args.windows % 2:
         raise ValueError("choose an even number of windows from 12 through 96")
     if len(starts) < args.windows:
         raise ValueError("insufficient document starts")
     # Stream byte 15,282,108 is the end of the title gate after the three setup articles.
     # Aim at byte quantiles, then choose the first full document with a real body.
-    src_at_start = np.maximum.accumulate(np.maximum(records["src"], 0))[starts]
     text = (ROOT / "src/tf1/tf1_prior0_set_v14.h").read_text().split("#define PRIOR0_INIT", 1)[1]
     fallback = np.array([int(x, 16) for x in re.findall(r"0x[0-9a-f]+", text)], dtype="<u2")
     if hashlib.sha256(fallback.tobytes()).hexdigest() != "ceb297e328d9af5daa72f47b750267b1c1978e8d382d1d254692fe2dc31cbafc":
         raise ValueError("unexpected prior0")
-    if not args.plan_only:
+    if not (args.plan_only or args.stream_plan):
         args.output.mkdir()
     spans = []
     windows = []
@@ -112,11 +127,13 @@ def main():
                 continue
             if args.stop is not None and np.any(target[:end][scored] >= stop):
                 continue
-            if not np.array_equal(target_token[:end][scored], tokens[target[:end][scored]]):
+            if not args.stream_plan and not np.array_equal(target_token[:end][scored], tokens[target[:end][scored]]):
                 raise ValueError("target tokens disagree with the prior run")
             valid = indices[:end] > 0
-            selected = stream[indices[:end][valid] - 1]
-            if args.plan_only:
+            selected = indices[:end][valid] - 1
+            if not args.stream_plan:
+                selected = stream[selected]
+            if args.plan_only or args.stream_plan:
                 spans.append((int(selected.min()), int(selected.max())+1))
                 windows.append(dict(document=int(doc)))
                 used.add(doc)
@@ -140,6 +157,10 @@ def main():
             break
         else:
             raise ValueError(f"no usable document near {offset}")
+    if args.stream_plan:
+        with args.output.open("x") as output:
+            json.dump(dict(selection=args.selection,windows=windows,source_spans=spans),output)
+        return
     if args.plan_only:
         from compact_priors import PLAN
         reference = json.loads(PLAN.read_bytes())
