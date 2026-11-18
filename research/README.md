@@ -52,3 +52,13 @@ The initial C40 suite contains 42,238 fed rows and 34,706 scored targets across 
 | 50% | 1,656 B | -12,065 B | +12,599 B |
 
 Negative proxy values predict a smaller entry. The full-codec effects are unmeasured. The [pilot data](quant/c40-pilot.json) include the exact candidate and suite hashes, model losses and per-window deltas.
+
+The first representation that preserved the prediction on every tested window flips the signs of selected integer weight rows and their BF16 scales together. The exporter verifies every effective weight and the neuron order after unpacking. The frozen container is 3,744,283 bytes, a saving of 346 bytes. Prediction loss matched on the initial twelve articles and all 48 additional early articles. A release build with this container produced a 4,042,218-byte compressor with SHA-256 `90dac9bbbafd78c29ae31109d2725472203efeb93881651d154451a925066062`. Its archive must be measured independently.
+
+```bash
+python3 research/quant/symmetry.py export tables fit .06 /scratch/sign-fit.c5
+sha256sum /scratch/sign-fit.c5
+# 78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa
+```
+
+The fast benchmark uses a second group of 48 early articles, a 24-article suite matched to the actual archive interval, and a disjoint later-corpus suite for promotion. Offline fitting uses a separate 96-article suite. `research/quant/verify_priors.py c40 /scratch/c40` checks all seven C40 raster digests against the published eight-digit prefixes. Its `full` mode validates the complete trimmed priors and token streams against the upstream SHA-256 values.

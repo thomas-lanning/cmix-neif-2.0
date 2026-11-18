@@ -18,6 +18,14 @@ Each decoder recovered every decision and consumed its entire payload. In the co
 
 An earlier unprofiled decoder produced a 13,692-byte arithmetic result for a different sequence of decoded decisions. Re-encoding those decisions can reproduce the input bytes even when the model diverges. The benchmark now checks the independent encoding trace as well as arithmetic bytes. The release build settings and the public payload are part of the reference. [Build recipe](../../build_and_construct_comp.sh) · [Initial trace workflow](../../.github/workflows/ans.yml)
 
+The [profile-guided CI reproduction](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44216165137) passed the independently captured decision digest.
+
+## Native encode and independent decode
+
+`install.py SOURCE --prefix-test` stages a research build in a fresh source tree. It inserts rANS after the existing predictor, including the special raw-bit path. Each block holds up to 262,144 coded decisions. The decoder counts the same decisions and reads each six-byte state directly, so block boundaries need no length field. It regenerates neural and context-mixer probabilities from decoded bytes. The input stream length supplies the stop condition. The encoder's research-only arithmetic output is checked against the published archive.
+
+On 200,000 canonical input bytes, the rANS stream occupied **42,728 bytes**, compared with **42,694** for independently terminated arithmetic coding, including the same five-byte header. A fresh decoder process, given the rANS stream and the published weights, reproduced all 200,000 canonical bytes. It checked the terminal rANS state and consumed the complete input. All 42,688 continuing arithmetic-coded bytes after the header matched the published archive. The small sample ends in the metadata region.
+
 The separate causal correction in `calibration.cpp` estimates the observed-to-expected error ratio from confidence and previous coded bits. Selecting among 54 settings on the first half of the verified trace saved four bytes on that half and two on the second. Actual packaged code costs would also count.
 
 ## Reproduction
