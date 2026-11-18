@@ -44,6 +44,8 @@ Dispatch **Run a quantization experiment on the fixed quick benchmark** from the
 
 The **Fit and validate a quantized correction to native byte probabilities** workflow uses a completed C40 build. It records the original transformer's probability of each possible next byte and groups the predictions by confidence and agreement with PPMd. Four discovery articles fit each table, two more choose its size and regularization, and the remaining six measure the frozen procedure. The lookup table occupies 8 or 24 bytes before executable packaging. An external test can reuse the table with `head_calibration.py --frozen` and a new disjoint C40 suite.
 
+Build the portable benchmark with `include_validation=true` to get `validation-c40`. Pass that build number as `validation_run` in the quick sweep to automatically replay every model that improved on both six-article splits. The follow-up checks the independently generated 48-article manifest and records the frozen hashes before reading the validation scores. For previously completed runs, dispatch **Validate frozen quantization exports on 48 independent articles** with the original run number and artifact name.
+
 ## Starting a quantization-aware training run from the published model
 
 Run `python3 research/quant/qat_seed.py /scratch/release-plain.c5` in a NumPy environment. This converts the published NP2 weights into the plain v5 file read by the training tools. It checks each tensor's name, type, shape and byte values with the trainer's own v5 reader before publishing the file. The reference conversion produced 597 identical tensors and 3,765,762 bytes with SHA-256 `26e572080c240b6c8eb59a8dc8aab6ab6591efac695424f5942abf1d8fdde712`.

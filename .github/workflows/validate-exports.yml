@@ -30,6 +30,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          path: controller
+      - uses: actions/checkout@v4
+        with:
+          ref: d1af0f6a5b2bd19165d6a3a64bc4c4bdc95de20c
+          persist-credentials: false
+          path: evaluator
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -47,10 +53,13 @@ jobs:
           set -euo pipefail
           d="$RUNNER_TEMP/independent"; mkdir "$d"
           tar -C "$d" -xzf "$RUNNER_TEMP/validation-kit/c40-validation.tar.gz" ./suite
-          research/quant/build.sh "$d/replay"
+          cp controller/research/quant/validate_exports.py evaluator/research/quant/
+          evaluator/research/quant/build.sh "$d/replay"
           python3 -m venv "$d/env"; "$d/env/bin/pip" install --quiet numpy==2.2.6
-          "$d/env/bin/python" research/quant/validate_exports.py "$d/replay" "$d/suite" \
+          "$d/env/bin/python" evaluator/research/quant/validate_exports.py "$d/replay" "$d/suite" \
             "$RUNNER_TEMP/exports" "$d/results"
+          git -C evaluator rev-parse HEAD >"$d/results/evaluator-commit.txt"
+          git -C controller rev-parse HEAD >"$d/results/controller-commit.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
