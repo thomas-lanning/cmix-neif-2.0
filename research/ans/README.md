@@ -25,6 +25,8 @@ python3 research/ans/compare.py /path/to/coded-events.bin
 
 The workflow additionally supplies `--original-payload` to verify the arithmetic bytes against the archive. The quantization suite uses the primary transformer's probabilities. Its results and this final mixed-bit trace answer different experimental questions.
 
+A separate causal probability correction in `calibration.cpp` estimates the observed-to-expected error ratio by confidence bucket and recent coded bits. On the 131,072-decision prefix, selecting among 54 configurations using the first half gave a zero-byte change on the second half. The best whole-prefix change was zero and the worst cost 31 bytes. The arithmetic control independently reproduced the 13,692-byte length. Article text provides a separate test of this model change.
+
 ## Lossless rANS for the weights
 
 A separate experiment encoded the signed weight symbols directly with one 15-symbol rANS distribution per tensor. It stores frequency tables and metadata, compresses the remaining byte planes with DEFLATE, and reconstructs the rotary tables with the upstream algorithm. Its 3,796,587-byte container recovered all 597 tensor names, types, shapes and values exactly. The shipped NP2 container used 3,744,629 bytes, giving NP2 a 51,958-byte advantage per copy. NP2 also encodes information in neuron permutations. The rANS research container's SHA-256 is `f4ec71872a32afa0181a9f39864111ef3c49ed17386f8cf36c64e1c2f87fac7b`. The measurement covers the stored data. A submission would also price its native reader.

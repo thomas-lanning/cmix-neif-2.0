@@ -9,6 +9,20 @@ Read [the prize rules](../prize-rules.md) and the [operating instructions](../RE
 
 The evaluator, fixture generator, scoring formula, baseline weights and accounting stay fixed during a sweep. GPU training and changing model dimensions are separate campaigns. A new geometry requires matching native kernels and a new calibration.
 
+## Broader experiments
+
+Use a fresh result directory for each campaign. The original layout is the control. The native kernels also support shrinking the MLP widths in blocks 0 through 11 in multiples of 16. Keep the final four MLPs at their original widths for the online fast-weight head.
+
+- `campaign.py search` varies the weight alphabet and rounds BF16 row scales. It selects promising layer groups, refines the fraction and alphabet, then tests combinations.
+- `activations.py collect` records the integer inputs that the released up and down projections actually receive. `calibrated.py gram` computes input covariance on discovery documents. `calibrated.py search` uses it to select neurons, compensate the remaining projections and fit smaller alphabets.
+- `rate_distortion.py` changes individual integer weights. In each coordinate update it prices an integer symbol by its observed frequency and estimates prediction damage from the native activations. Exporting each candidate gives its actual NP2 size.
+- `distill.py` fits pruned quantized blocks to their original outputs on separate training articles. The initial floating-point calculation must reproduce the original block’s quantized activations exactly on its validation sample. The native whole-model replay determines whether a fitted block is worth keeping.
+- `campaign.py validate` replays frozen, hash-checked candidates on a new suite. Use the early 48-article suite to screen again, and reserve later articles from the full coder stream for a separate check.
+
+The prefix harness in `instrument_prefix.py` records the actual bytes emitted by the original mixed predictor at fixed stream positions. Verify the reference payload against the published archive. Use a weak and a stronger candidate from different search families on exactly the same interval. `transfer.py fit` reports each measured payload difference, estimated head difference, and both halves of the estimate. Small denominators or opposite signs between the halves make the transfer uncertain. `shortlist.py freeze` records the two controls, source model hashes and a selection across several transfer assumptions. `shortlist.py replay` evaluates that frozen list on fresh documents.
+
+For a release trial, run `stage_release.py CANDIDATE SHA256 FRESH_TREE`, build that tree offline with upstream’s `build.sh`, and run `research/baseline.sh --candidate COMP_SHA256 COMP9 ENWIK9 FRESH_RUN_DIR` on one core. This stages both embedded weight copies from the same checked model. Archive bytes, decoded data and packaged executable sizes determine the outcome.
+
 ## Running repeated experiments
 
 This setup follows Karpathy's editable experiment program and fixed evaluator. A command-based controller can read the printed `METRIC` lines. The same campaign can also run from a coding agent with these instructions. [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) · [pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) · [Claude Autoresearch](https://github.com/uditgoenka/autoresearch)
