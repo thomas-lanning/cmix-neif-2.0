@@ -42,7 +42,8 @@ def crops(model, suite, independent=False):
             index = torch.from_numpy(positions-lo)
             with torch.no_grad():
                 logp = model.compute_logits(token,prior,None)[0,index].log_softmax(-1)
-            split.append((token,prior,index,logp,(w["document"],lo,hi)))
+            targets = torch.from_numpy(rows["target"][positions].astype(np.int64))
+            split.append((token,prior,index,logp,(w["document"],lo,hi),targets))
     return train, validation
 
 
@@ -89,7 +90,7 @@ def install(model, tensors, ranking, count):
 
 
 def discrepancy(model, batch):
-    token,prior,index,teacher,_ = batch
+    token,prior,index,teacher = batch[:4]
     student = model.compute_logits(token,prior,None)[0,index].log_softmax(-1)
     return (teacher.exp()*(teacher-student)).sum(-1).mean()
 
@@ -117,14 +118,7 @@ def export(bank, state, path, codec):
         raise ValueError("distilled candidate failed tensor round trip")
 
 
-def run(a):
-    torch.set_num_threads(2)
-    model = cpu_model(a.checkpoint)
-    from candidate import np2
-    plan = json.loads(a.ranking.read_bytes())
-    if plan["suite"]!=digest(a.suite/"manifest.json"):
-        raise ValueError("Fisher plan used different articles")
-    bank = np2.read_container(str(BASELINE))
+def training_crops(a,model):
     training_suite = a.training_suite or a.suite
     if a.training_suite:
         if not a.validation_manifest:
@@ -143,7 +137,18 @@ def run(a):
         ids = documents(training)
         if len(training["windows"]) != 96 or len(ids) != 96 or ids & (documents(quick)|documents(validate)):
             raise ValueError("expected 96 distinct training documents disjoint from both evaluation suites")
-    train, validation = crops(model,training_suite,independent=bool(a.training_suite))
+    return training_suite, crops(model,training_suite,independent=bool(a.training_suite))
+
+
+def run(a):
+    torch.set_num_threads(2)
+    model = cpu_model(a.checkpoint)
+    from candidate import np2
+    plan = json.loads(a.ranking.read_bytes())
+    if plan["suite"]!=digest(a.suite/"manifest.json"):
+        raise ValueError("Fisher plan used different articles")
+    bank = np2.read_container(str(BASELINE))
+    training_suite, (train, validation) = training_crops(a,model)
     a.output.mkdir()
     for count in (32,256):
         fits,handles = install(model,bank,plan["ranked_rows"],count)
