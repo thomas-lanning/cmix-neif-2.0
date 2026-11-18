@@ -59,3 +59,9 @@ jobs:
       validation_run: ${{ format('{0}', github.run_id) }}
       artifact: supervised-symbol-trial
       candidate_sha256: ${{ needs.choose.outputs.model }}
+  larger:
+    needs: [choose, payload]
+    if: needs.payload.outputs.advance == 'true'
+    uses: ./.github/workflows/large-prefix.yml
+    with:
+      candidate_sha256: ${{ needs.choose.outputs.model }}

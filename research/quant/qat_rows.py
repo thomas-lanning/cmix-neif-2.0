@@ -11,7 +11,7 @@ from evaluate import BASELINE, measure
 from fixtures import MAGIC, ROW
 
 
-def crops(model, suite, independent=False):
+def crops(model, suite, independent=False, with_teacher=True):
     manifest = json.loads((suite/"manifest.json").read_bytes())
     train, validation = [], []
     windows = manifest["windows"] if independent else manifest["windows"][::2]
@@ -40,8 +40,10 @@ def crops(model, suite, independent=False):
             lo, hi = max(0,int(positions[0])-128), int(positions[-1])+1
             token, prior = inputs(rows[lo:hi])
             index = torch.from_numpy(positions-lo)
-            with torch.no_grad():
-                logp = model.compute_logits(token,prior,None)[0,index].log_softmax(-1)
+            logp = None
+            if with_teacher:
+                with torch.no_grad():
+                    logp = model.compute_logits(token,prior,None)[0,index].log_softmax(-1)
             targets = torch.from_numpy(rows["target"][positions].astype(np.int64))
             split.append((token,prior,index,logp,(w["document"],lo,hi),targets))
     return train, validation
@@ -118,7 +120,7 @@ def export(bank, state, path, codec):
         raise ValueError("distilled candidate failed tensor round trip")
 
 
-def training_crops(a,model):
+def training_crops(a,model,with_teacher=True):
     training_suite = a.training_suite or a.suite
     if a.training_suite:
         if not a.validation_manifest:
@@ -130,7 +132,7 @@ def training_crops(a,model):
         quick = json.loads((a.suite/"manifest.json").read_bytes())
         validate = json.loads(a.validation_manifest.read_bytes())
         validate_for_qat(training_suite/"manifest.json", quick, validate)
-    return training_suite, crops(model,training_suite,independent=bool(a.training_suite))
+    return training_suite, crops(model,training_suite,independent=bool(a.training_suite),with_teacher=with_teacher)
 
 
 def run(a):

@@ -12,6 +12,10 @@ on:
       validation_run: {type: string, required: true, description: Run containing independent-quantization-results}
       candidate_sha256: {type: string, required: true, description: Frozen exported model SHA-256}
   workflow_call:
+    outputs:
+      advance:
+        description: The 20M payload shrank or its matched full-entry estimate improved
+        value: ${{ jobs.prefix.outputs.advance }}
     inputs:
       purpose: {type: string, default: promotion}
       exports_run: {type: string, required: true}
@@ -25,6 +29,8 @@ jobs:
   prefix:
     runs-on: ubuntu-24.04
     timeout-minutes: 220
+    outputs:
+      advance: ${{ steps.result.outputs.advance }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,6 +78,13 @@ jobs:
           d="$RUNNER_TEMP/prefix"
           "$d/env/bin/python" -u research/quant/payload_trial.py "$d/build/cmix" "$d/bed/censpruef_strom.bin" \
             "$d/published.archive" "$RUNNER_TEMP/quick-exports" "$RUNNER_TEMP/validation" "$d/result" "$MODEL" --purpose "$PURPOSE" --replay "$d/replay" --interval-suite "$d/interval"
+      - id: result
+        name: Decide whether to advance the frozen model to 40M
+        run: |
+          d="$RUNNER_TEMP/prefix/result"
+          advance=$(jq -er '[.real_payload_delta_bytes["20000000"], .matched_primary_comparison.projected_entry_delta]
+            | if all(.[]; type=="number") then (min < 0 | tostring) else error("incomplete 20M measurement") end' "$d/measurement.json")
+          echo "advance=$advance" >>"$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

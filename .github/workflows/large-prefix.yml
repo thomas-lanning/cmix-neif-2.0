@@ -1,0 +1,105 @@
+name: Compare frozen predictors on 40M preprocessed Wikipedia bytes
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      candidate_sha256: {type: string, required: true}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  encode:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [reference, candidate]
+    env:
+      VARIANT: ${{ matrix.role == 'reference' && 'reference' || inputs.candidate_sha256 != '' && 'weights' || 'fitted-mixer' }}
+      MODEL: ${{ inputs.candidate_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        if: env.VARIANT == 'weights'
+        with:
+          name: supervised-symbol-trial
+          path: ${{ runner.temp }}/exports
+      - uses: actions/download-artifact@v4
+        if: env.VARIANT == 'weights'
+        with:
+          name: actual-quantization-payload
+          path: ${{ runner.temp }}/short
+      - name: Build native coder and prepare the canonical enwik9 stream
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/large"
+          mkdir -p "$d"/{build,tools,bed,native}
+          cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/build/"
+          python3 research/quant/instrument_prefix.py "$d/build" --no-events --roundtrip-40m
+          if [[ "$VARIANT" == fitted-mixer ]]; then python3 research/ans/native_mixer.py "$d/build"; fi
+          make -C "$d/build" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
+          cp "$d/build/cmix" "$d/native/"
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/tools" bed
+          python3 research/fetch_corpus.py "$d/enwik9"
+          cp dictionary/english.dic "$d/bed/.dict"
+          cp src/readalike_prepr/data/new_article_order "$d/bed/.new_article_order"
+          (cd "$d/bed" && "$d/tools/cmix_bed" -e "$d/enwik9" out >bed.log 2>&1)
+      - name: Measure actual arithmetic output through 40M
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/large"
+          cd "$d/native"
+          args=()
+          if [[ "$VARIANT" == reference ]]; then
+            curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$d/reference.archive"
+            python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload "$d/reference.archive"
+            args=(--published-payload "$PWD/published.payload")
+          elif [[ "$VARIANT" == weights ]]; then
+            args=(--sha "$MODEL" --exports "$RUNNER_TEMP/exports" --short "$RUNNER_TEMP/short/result")
+          fi
+          python3 "$GITHUB_WORKSPACE/research/quant/large_prefix.py" encode "$VARIANT" "$d/bed/censpruef_strom.bin" "${args[@]}"
+          if [[ "$VARIANT" != reference ]]; then tar -czf decoder-kit.tar.gz cmix weights-*.c5 payload; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prefix40-${{ matrix.role }}
+          path: |
+            ${{ runner.temp }}/large/native/encode.json
+            ${{ runner.temp }}/large/native/prefix-sizes.tsv
+            ${{ runner.temp }}/large/native/codec.log
+            ${{ runner.temp }}/large/native/decoder-kit.tar.gz
+          retention-days: 30
+  decode:
+    needs: encode
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: prefix40-reference
+          path: ${{ runner.temp }}/reference
+      - uses: actions/download-artifact@v4
+        with:
+          name: prefix40-candidate
+          path: ${{ runner.temp }}/candidate
+      - name: Decode on a fresh runner and compare both halves with upstream
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/decoding"
+          mkdir "$d"; cd "$d"
+          tar -xzf "$RUNNER_TEMP/candidate/decoder-kit.tar.gz"
+          python3 "$GITHUB_WORKSPACE/research/quant/large_prefix.py" decode "$RUNNER_TEMP/candidate/encode.json" "$RUNNER_TEMP/reference/encode.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prefix40-comparison
+          path: |
+            ${{ runner.temp }}/decoding/comparison.json
+            ${{ runner.temp }}/decoding/codec.log
+          retention-days: 30

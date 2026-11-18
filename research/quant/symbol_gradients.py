@@ -73,14 +73,14 @@ def run(a):
     # The standalone NP2 exporter supplies a minimal pysrc module for its own imports.
     # Initialize the full training package before loading that exporter.
     from candidate import np2
-    train_suite,(training,validation)=training_crops(a,model)
+    train_suite,(training,validation)=training_crops(a,model,with_teacher=False)
     bank=np2.read_container(str(BASELINE))
     lookup={t.name:t for t in bank}
     proposals,(layers,coords,steps,savings)=rank(model,lookup,training)
     a.output.mkdir()
     with torch.no_grad():
         original_val=np.array([float(token_loss(model,b)) for b in validation])
-    for budget in (1024,8192,32768):
+    def run_budget(budget):
         if len(layers)<budget:
             raise ValueError("insufficient qualifying rate-reducing edits")
         tensors=[np2.Ent(t.name,t.code,t.a) for t in bank]
@@ -112,10 +112,23 @@ def run(a):
                     quick_search=result["search_proxy_bytes"],quick_confirmation=result["confirmation_proxy_bytes"])
         (a.output/f"gradient-symbols-{budget}.json").write_text(json.dumps(record,indent=2)+"\n")
         print(budget,record["twice_weight_delta"],record["quick_search"],record["quick_confirmation"],flush=True)
+        return record["quick_search"]
+
+    discovery = {budget: run_budget(budget) for budget in (1024, 8192, 32768)}
+    if a.refine:
+        # The confirmation half and the independent articles stay out of this choice.
+        best = min(discovery, key=lambda size: (discovery[size], size))
+        neighbours = {1024: (256, 4096), 8192: (4096, 16384), 32768: (16384, 65536)}
+        extra = [size for size in neighbours[best] if size <= len(layers)]
+        plan = dict(discovery_scores=discovery, best_budget=best, next_budgets=extra)
+        (a.output/"refinement.json").write_text(json.dumps(plan,indent=2)+"\n")
+        for budget in extra:
+            run_budget(budget)
 
 
 if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
     for name in ("checkpoint","suite","training_suite","validation_manifest","replay","output"):
         p.add_argument(name,type=lambda s:Path(s).resolve())
+    p.add_argument("--refine", action="store_true", help="test two edit budgets around the best discovery result")
     run(p.parse_args())

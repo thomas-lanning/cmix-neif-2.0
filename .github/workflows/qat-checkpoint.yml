@@ -194,6 +194,8 @@ jobs:
           retention-days: 30
       - name: Fit lower-rate weight codes using held-separate training articles
         if: inputs.token_gradients
+        env:
+          CORPUS_TRAINING_RUN: ${{ inputs.corpus_training_run }}
         run: |
           set -euo pipefail
           d="$RUNNER_TEMP/symbol-gradients"; mkdir "$d"
@@ -202,8 +204,10 @@ jobs:
           tar -C "$d" -xzf "$RUNNER_TEMP/fixture-artifact/c40-kit.tar.gz"
           tar -C "$d" -xzf "$TRAINING_ARCHIVE"
           tar -xzOf "$RUNNER_TEMP/validation-artifact/c40-validation.tar.gz" ./suite/manifest.json >"$d/validation-manifest.json"
+          options=()
+          if [[ -n "$CORPUS_TRAINING_RUN" ]]; then options=(--refine); fi
           "$RUNNER_TEMP/env/bin/python" -u research/quant/symbol_gradients.py \
-            "$RUNNER_TEMP/checkpoint" "$d/suite" "$d/training" "$d/validation-manifest.json" "$d/replay" "$d/results" | tee "$d/fit.log"
+            "$RUNNER_TEMP/checkpoint" "$d/suite" "$d/training" "$d/validation-manifest.json" "$d/replay" "$d/results" "${options[@]}" | tee "$d/fit.log"
       - uses: actions/upload-artifact@v4
         if: always() && inputs.token_gradients
         with:

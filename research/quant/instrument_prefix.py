@@ -59,6 +59,14 @@ src = once(src, "      ++pos;\n    }\n  }\n  e.Flush();", """      ++pos;
     }
   }
   e.Flush();""")
+if "--roundtrip-40m" in sys.argv[2:]:
+    src = once(src, "200000 : 20000000;", "200000 : 40000000;")
+    src = once(src, "pos == 20000000)", "pos == 20000000 || pos == 30000000 || pos == 40000000)")
+    src = once(src, "  ReadHeaderVocfix(data_in, output_bytes, &dictionary_used, &vocab);",
+               "  census_block_active = true;\n  isbn_check::after_at.an = true;\n"
+               "  ReadHeaderVocfix(data_in, output_bytes, &dictionary_used, &vocab);")
+    src = once(src, "    putc(byte, os);\n    sem_pb",
+               "    putc(byte, os);\n    if (pos + 1 == 40000000) std::exit(fflush(os) ? 4 : 0);\n    sem_pb")
 runner.write_text(("extern bool research_capture;\n" if capture_bits else "static bool research_capture;\n") + src)
 
 encoder = root / "src/coder/encoder.cpp"
