@@ -16,9 +16,7 @@ jobs:
           scratch="$RUNNER_TEMP/research"; mkdir -p "$scratch/tools"
           research/quant/build.sh "$scratch/tools/replay"
           bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$scratch/tools" bed dump priors
-          curl -fLsS --retry 3 https://mattmahoney.net/dc/enwik9.zip -o "$scratch/enwik9.zip"
-          unzip -p "$scratch/enwik9.zip" enwik9 >"$scratch/enwik9"
-          echo "159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc  $scratch/enwik9" | sha256sum -c -
+          python3 research/fetch_corpus.py "$scratch/enwik9"
           python3 -m venv "$scratch/env"
           "$scratch/env/bin/pip" install --quiet numpy==2.2.6
       - name: Reconstruct the exact twelve windows and replay two controls

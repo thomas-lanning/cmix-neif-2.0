@@ -6,6 +6,10 @@ on:
         type: string
         description: Successful hybrid release build run in this fork
         required: true
+      phase:
+        type: choice
+        options: [both, encode, decode]
+        default: both
 permissions:
   contents: read
   actions: read
@@ -16,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        phase: [encode, decode]
+        phase: ${{ fromJSON(inputs.phase == 'encode' && '["encode"]' || inputs.phase == 'decode' && '["decode"]' || '["encode","decode"]') }}
     env:
       PHASE: ${{ matrix.phase }}
     steps:
@@ -34,8 +38,7 @@ jobs:
           set -euo pipefail
           result="$RUNNER_TEMP/release"
           if [[ "$PHASE" == encode ]]; then
-            curl -fLsS --retry 3 https://mattmahoney.net/dc/enwik9.zip -o "$result/enwik9.zip"
-            unzip -p "$result/enwik9.zip" enwik9 >"$result/enwik9"
+            python3 research/fetch_corpus.py "$result/enwik9"
             python3 research/ans/release_body.py encode "$result/release/comp9" "$result/assembly.json" "$result/real" --corpus "$result/enwik9"
           else
             curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$result/reference.archive"
