@@ -28,7 +28,7 @@ __attribute__((noinline)) static void target(uint8_t symbol,uint64_t pos) {
     if (!f || std::fprintf(f,"%u %u\n",population[i],selected[i])<0 || std::fclose(f)) std::abort();
   }
 }
-__attribute__((noinline)) static void sample(uint64_t pos,const State& s,
+__attribute__((noinline)) static void sample(uint64_t pos,const semantic_cache::State& s,
         const uint32_t* ids,int n,const uint32_t* top,const double* similarities,int k,const float* transformer) {
   constexpr uint32_t starts[]={16000000,28000000,38000000};
   int group=-1;
