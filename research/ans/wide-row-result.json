@@ -1,0 +1,39 @@
+{
+  "build_run": 44260990713,
+  "source_branch": "research/wide-row-rans",
+  "source_commit": "488c3b2",
+  "weights": {
+    "original_bytes": 3744283,
+    "previous_hybrid_bytes": 3730672,
+    "hybrid_bytes": 3729984,
+    "hybrid_sha256": "b422cefa6821f6aebd654d81b5baacee07ad9411b73ae60a73ddbbbaa126e311",
+    "original_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+    "exact_np2_roundtrip": true
+  },
+  "assembly": {
+    "origin": "reassembled with the published payload",
+    "reference_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "decoder_bytes": 185962,
+    "decoder_sha256": "284f5aaa34d304a07a82601bfa3d9aadf297a4c8f0c12ae6c2094a182fe18fbd",
+    "weight_bytes": 3729984,
+    "weight_sha256": "b422cefa6821f6aebd654d81b5baacee07ad9411b73ae60a73ddbbbaa126e311",
+    "payload_bytes": 85417870,
+    "payload_sha256": "fc2d8c8f824e740ec8b06fa129316043c3876027449005d58df21d0f12254b57",
+    "archive_bytes": 89333824,
+    "archive_sha256": "db02e956dfac89ee575a4904858dbb2945bd247df807d91a25e092dcdeddc0e6",
+    "comp_bytes": 4030001,
+    "comp_sha256": "174e407d63e2e432eeca292682f20302119a446040de788be326254648693381",
+    "entry_bytes_if_payload_identical": 93363825
+  },
+  "decoded_tensor_slots": 597,
+  "decoded_tensor_dump_sha256": "10f543b3e90473468f0b083eea76eff06b1694389a3bedd54335c7f0d0c9162d",
+  "prefix": {
+    "bytes": 200000,
+    "sha256": "a3781682da3dc803ae1a7ee93630b8158ad1e8a76f58af26095a5c1050d1dd9e",
+    "published_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "reassembled_archive_sha256": "db02e956dfac89ee575a4904858dbb2945bd247df807d91a25e092dcdeddc0e6",
+    "self_extracting_prefix_equal": true
+  },
+  "entry_delta_with_reference_payload": -25131,
+  "ordinary_body_run": 44264241792
+}

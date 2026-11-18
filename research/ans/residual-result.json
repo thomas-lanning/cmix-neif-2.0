@@ -47,6 +47,15 @@
       "matched_bytes": 20000000,
       "matched_sha256": "e3f8084643cb36eac12231108fefc98056d9e415dd7d66fd077d07a6f8796359",
       "elapsed_seconds": 6613.081998954
+    },
+    "encoder": {
+      "phase": "encode",
+      "executable_sha256": "664509e051fffcde370cd1635eac0f01ffabce7ae01bbbc2b44bc3dd04920498",
+      "one_logical_cpu": 0,
+      "canonical_checkpoint_bytes": 20000000,
+      "matched_bytes": 3367414,
+      "matched_sha256": "52c208ff8ef5e0d0844d928e5a53d0b0411eb456edec3e230ad4d49f4b167a58",
+      "elapsed_seconds": 8479.267860465001
     }
   }
 }
