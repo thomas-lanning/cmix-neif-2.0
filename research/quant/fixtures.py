@@ -22,7 +22,9 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("selection", choices=["40000000", "full"])
     parser.add_argument("--windows", type=int, default=12)
-    parser.add_argument("--exclude-manifest", type=Path)
+    parser.add_argument("--exclude-manifest", type=Path, action="append", default=[])
+    parser.add_argument("--start", type=int, help="first allowed source position in the dump (includes its 6-byte header)")
+    parser.add_argument("--stop", type=int, help="exclusive source position in the dump")
     args = parser.parse_args()
     dump = args.scratch / "dump"
     priors = args.scratch / "priors"
@@ -60,13 +62,17 @@ def main():
     args.output.mkdir()
     windows = []
     used = set()
-    if args.exclude_manifest:
-        other = json.loads(args.exclude_manifest.read_bytes())
+    for exclusion in args.exclude_manifest:
+        other = json.loads(exclusion.read_bytes())
         if other["selection"] != args.selection:
             raise ValueError("excluded document IDs must refer to the same raw dump")
         used.update(w["document"] for w in other["windows"])
     first = 45_000_000 if args.selection == "full" else 15_282_108
-    for offset in np.linspace(first, expected - 200_000, args.windows, dtype=np.int64):
+    first = args.start if args.start is not None else first
+    stop = args.stop if args.stop is not None else expected
+    if not 0 <= first < stop-200_000 or stop > expected:
+        raise ValueError("invalid sampling interval")
+    for offset in np.linspace(first, stop - 200_000, args.windows, dtype=np.int64):
         for doc in range(int(np.searchsorted(src_at_start, offset)), len(starts) - 1):
             if doc in used:
                 continue
@@ -82,6 +88,8 @@ def main():
             scored = scored[:end].copy()
             scored[:256] = False
             if scored.sum() < 256:
+                continue
+            if args.stop is not None and np.any(target[:end][scored] >= stop):
                 continue
             if not np.array_equal(target_token[:end][scored], tokens[target[:end][scored]]):
                 raise ValueError("target tokens disagree with the prior run")
@@ -106,9 +114,23 @@ def main():
         else:
             raise ValueError(f"no usable document near {offset}")
     manifest = args.output / "manifest.tmp"
-    manifest.write_text(json.dumps(dict(format=1, selection=args.selection,
+    meta=dict(format=1, selection=args.selection,
         input_sha256="159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc",
-        windows=windows), indent=2) + "\n")
+        windows=windows)
+    if args.start is not None or args.stop is not None:
+        meta["source_interval"] = [first, stop]
+        # Count the target opportunities in the same source interval as the
+        # expensive mixed-coder run. Excludes each document's closing target.
+        count = 0
+        low = max(0, int(np.searchsorted(src_at_start, first))-1)
+        high = min(len(starts)-1,int(np.searchsorted(src_at_start, stop))+1)
+        for doc in range(low, high):
+            lo, hi = starts[doc:doc+2]
+            f = dumpv2.felder(records[lo:hi])
+            target, _, score, _ = dumpv2.zielspalten(f, np.array([0,hi-lo]),208)
+            count += int(np.count_nonzero(score & (target>=first) & (target<stop)))
+        meta["interval_nonterminal_targets"] = count
+    manifest.write_text(json.dumps(meta, indent=2) + "\n")
     manifest.replace(args.output / "manifest.json")
 
 
