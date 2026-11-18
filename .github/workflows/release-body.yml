@@ -1,0 +1,52 @@
+name: Verify ordinary candidate encoding and decoding through 20M
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        type: string
+        description: Successful hybrid release build run in this fork
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 225
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: [encode, decode]
+    env:
+      PHASE: ${{ matrix.phase }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: hybrid-release-check
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run }}
+          path: ${{ runner.temp }}/release
+      - name: Check the release against the independent input or published payload
+        run: |
+          set -euo pipefail
+          result="$RUNNER_TEMP/release"
+          if [[ "$PHASE" == encode ]]; then
+            curl -fLsS --retry 3 https://mattmahoney.net/dc/enwik9.zip -o "$result/enwik9.zip"
+            unzip -p "$result/enwik9.zip" enwik9 >"$result/enwik9"
+            python3 research/ans/release_body.py encode "$result/release/comp9" "$result/assembly.json" "$result/real" --corpus "$result/enwik9"
+          else
+            curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$result/reference.archive"
+            python3 research/early_decode.py "$result/reference.archive" "$result/release/comp9" "$result/combined.archive" >"$result/reassembly.json"
+            python3 research/ans/release_body.py decode "$result/combined.archive" "$result/assembly.json" "$result/real"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ordinary-${{ matrix.phase }}-through-20M
+          path: |
+            ${{ runner.temp }}/release/real/result.json
+            ${{ runner.temp }}/release/real/decoder.log
+          retention-days: 30

@@ -1,0 +1,39 @@
+{
+  "build_run": 44233847013,
+  "underlying_np2_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa",
+  "weights": {
+    "original_bytes": 3744283,
+    "hybrid_bytes": 3738808,
+    "carried_permutation_bytes": 20349,
+    "replaced_tensors": 62,
+    "rans_section_bytes": 2215206,
+    "arithmetic_section_bytes": 1523238,
+    "retained_np2_tail_bytes": 336,
+    "exact_np2_roundtrip": true,
+    "hybrid_sha256": "184b51338faabfdec11287e74faee86d8cfdd01dfdd6a94c864bb354a27b243c",
+    "original_sha256": "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa"
+  },
+  "assembly": {
+    "origin": "reassembled with the published payload",
+    "reference_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "decoder_bytes": 185017,
+    "decoder_sha256": "85fd3fce65d3bc810b1d13e5f8f411f1af346cac8ce5ebd01b57e34565fd5c8b",
+    "weight_bytes": 3738808,
+    "weight_sha256": "184b51338faabfdec11287e74faee86d8cfdd01dfdd6a94c864bb354a27b243c",
+    "payload_bytes": 85417870,
+    "payload_sha256": "fc2d8c8f824e740ec8b06fa129316043c3876027449005d58df21d0f12254b57",
+    "archive_bytes": 89341703,
+    "archive_sha256": "8034e85daeb63e4a62c139ed8469c1ae2f056fa175b8c9ddab3c829f3189c968",
+    "comp_bytes": 4037873,
+    "comp_sha256": "556558f777154faa48fa1e117e9a6778a9d440ac6b153e923a809d1d33ae6241",
+    "entry_bytes_if_payload_identical": 93379576
+  },
+  "prefix": {
+    "bytes": 200000,
+    "sha256": "a3781682da3dc803ae1a7ee93630b8158ad1e8a76f58af26095a5c1050d1dd9e",
+    "published_archive_sha256": "88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd",
+    "reassembled_archive_sha256": "8034e85daeb63e4a62c139ed8469c1ae2f056fa175b8c9ddab3c829f3189c968",
+    "self_extracting_prefix_equal": true
+  },
+  "entry_delta_with_reference_payload": -9380
+}

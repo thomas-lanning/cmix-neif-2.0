@@ -10,17 +10,19 @@ import subprocess
 import time
 
 
-def prefix(archive,folder,size,timeout):
+def prefix(archive,folder,size,timeout,corpus=None):
     folder.mkdir()
-    exe=folder/"archive9"
+    exe=folder/("archive9" if corpus is None else "comp9")
     shutil.copyfile(archive,exe)
     exe.chmod(0o755)
+    if corpus is not None:
+        shutil.copyfile(corpus,folder/"enwik9")
     end=time.monotonic()+timeout
     with (folder/"decoder.log").open("wb") as log:
         process=subprocess.Popen([str(exe.resolve())],cwd=folder,stdout=log,stderr=subprocess.STDOUT,
                                  start_new_session=True)
         try:
-            output=folder/".cmix.temp"
+            output=folder/(".cmix.temp" if corpus is None else "archive9")
             while time.monotonic()<end:
                 if output.exists() and output.stat().st_size>=size:
                     with output.open("rb") as f:return f.read(size)
