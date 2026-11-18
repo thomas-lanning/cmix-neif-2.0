@@ -9,6 +9,15 @@ prefix=${4:-40000000}
 [[ $prefix == 40000000 || $prefix == full ]] || { echo 'choose 40000000 or full' >&2; exit 2; }
 need=35000000000
 [[ $prefix != full ]] || need=275000000000
+collector=()
+fixture_args=()
+if [[ ${5:-} == --compact && $prefix == 40000000 ]]; then
+  need=8000000000
+  collector=(python3 "$root/research/quant/compact_priors.py" "$work/priors/c40-selected.float16")
+  fixture_args=(--compact-priors "$work/priors/c40-selected.float16")
+elif [[ $# -gt 4 ]]; then
+  echo '--compact supports the twelve-window C40 suite' >&2; exit 2
+fi
 mkdir "$work"
 cd "$work"
 [[ $(df -PB1 . | awk 'END {print $4}') -gt $need ]] || { echo 'insufficient scratch space' >&2; exit 2; }
@@ -37,10 +46,13 @@ dump_pid=$!
 set +e
 (cd priors && NEIF_TF1_SAVE_PRIORS="$PWD/ppmd-probs.float16" \
  NEIF_PPMD_ONLY_BYTES="$PWD/ppmd-bytes.uint8" NEIF_PPMD_ONLY_QUELLE="$PWD/ppmd-quelle.u8" \
- "$tools/cmix_priors" -n "$bed" ./aus >priors.log 2>&1)
+ "${collector[@]}" "$tools/cmix_priors" -n "$bed" ./aus >priors.log 2>&1)
 prior_rc=$?
 wait "$dump_pid"
 dump_rc=$?
 set -e
 [[ $prior_rc == 0 && $dump_rc == 0 ]] || { echo "priors=$prior_rc dump=$dump_rc" >&2; exit 1; }
-python3 "$root/research/quant/fixtures.py" "$work" "$work/suite" "$prefix"
+python3 "$root/research/quant/fixtures.py" "$work" "$work/suite" "$prefix" "${fixture_args[@]}"
+if (( ${#collector[@]} )); then
+  echo '77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b  suite/manifest.json' | sha256sum -c -
+fi

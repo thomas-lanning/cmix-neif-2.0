@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--exclude-manifest", type=Path, action="append", default=[])
     parser.add_argument("--start", type=int, help="first allowed source position in the dump (includes its 6-byte header)")
     parser.add_argument("--stop", type=int, help="exclusive source position in the dump")
+    parser.add_argument("--compact-priors", type=Path, help="the twelve verified C40 window spans")
     args = parser.parse_args()
     dump = args.scratch / "dump"
     priors = args.scratch / "priors"
@@ -34,7 +35,11 @@ def main():
         raise ValueError("v2 dump header required")
     origins = np.memmap(priors / "ppmd-quelle.u8", dtype="u1", mode="r")
     raw_tokens = np.memmap(priors / "ppmd-bytes.uint8", dtype="u1", mode="r")
-    raw_prior = np.memmap(priors / "ppmd-probs.float16", dtype="<u2", mode="r").reshape(-1, 208)
+    if args.compact_priors:
+        from compact_priors import CompactRaster
+        raw_prior = CompactRaster(args.compact_priors)
+    else:
+        raw_prior = np.memmap(priors / "ppmd-probs.float16", dtype="<u2", mode="r").reshape(-1, 208)
     stream = np.flatnonzero(origins == 0)
     expected = 37_565_854 if args.selection == "40000000" else 501_062_287
     if len(stream) != expected or len(origins) != len(raw_tokens) or len(raw_prior) != len(origins):

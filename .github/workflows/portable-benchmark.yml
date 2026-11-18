@@ -1,0 +1,59 @@
+name: Build and run the portable quantization benchmark
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  c40:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build native tools and verify the corpus
+        run: |
+          set -euo pipefail
+          scratch="$RUNNER_TEMP/research"; mkdir -p "$scratch/tools"
+          research/quant/build.sh "$scratch/tools/replay"
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$scratch/tools" bed dump priors
+          curl -fLsS --retry 3 https://mattmahoney.net/dc/enwik9.zip -o "$scratch/enwik9.zip"
+          unzip -p "$scratch/enwik9.zip" enwik9 >"$scratch/enwik9"
+          echo "159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc  $scratch/enwik9" | sha256sum -c -
+          python3 -m venv "$scratch/env"
+          "$scratch/env/bin/pip" install --quiet numpy==2.2.6
+      - name: Reconstruct the exact twelve windows and replay two controls
+        run: |
+          set -euo pipefail
+          scratch="$RUNNER_TEMP/research"; export PATH="$scratch/env/bin:$PATH"
+          research/quant/prepare.sh "$scratch/tools" "$scratch/enwik9" "$scratch/c40" 40000000 --compact
+          python3 research/quant/evaluate.py "$scratch/tools/replay" "$scratch/c40/suite" weights-*.c5 "$scratch/results" --label identity
+          python3 research/quant/loop.py "$scratch/tools/replay" "$scratch/c40/suite" "$scratch/results" --fractions 0.125
+          python3 - "$scratch/results/trials.jsonl" <<'PY'
+          import json, math, sys
+          from pathlib import Path
+          ref=json.loads(Path("research/quant/c40-pilot.json").read_bytes())
+          rows=[json.loads(s) for s in Path(sys.argv[1]).read_text().splitlines()]
+          assert len(rows)==2 and rows[0]["label"]=="identity"
+          for row in rows:
+              prior=next(r for r in ref["trials"] if r["candidate_sha256"]==row["candidate_sha256"])
+              assert row["suite_sha256"]==ref["suite_sha256"]
+              assert row["twice_weight_delta"]==prior["twice_weight_delta"]
+              assert all(math.isclose(a,b,rel_tol=1e-7,abs_tol=1e-8)
+                         for a,b in zip(row["bits_per_target_delta_by_window"],prior["bits_per_target_delta_by_window"],strict=True))
+          PY
+          mkdir "$scratch/kit"
+          cp -r "$scratch/c40/suite" "$scratch/kit/"
+          cp "$scratch/tools/replay" "$scratch/kit/"
+          cp LICENSE NOTICE.md "$scratch/kit/"
+          git rev-parse HEAD >"$scratch/kit/research-commit.txt"
+          tar -C "$scratch/kit" -czf "$scratch/c40-kit.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: portable-c40
+          path: |
+            ${{ runner.temp }}/research/c40-kit.tar.gz
+            ${{ runner.temp }}/research/results/trials.jsonl
+            ${{ runner.temp }}/research/results/sweep.jsonl
+            ${{ runner.temp }}/research/c40/*/*.log
+          retention-days: 30
