@@ -35,5 +35,26 @@
     "reassembled_archive_sha256": "8034e85daeb63e4a62c139ed8469c1ae2f056fa175b8c9ddab3c829f3189c968",
     "self_extracting_prefix_equal": true
   },
-  "entry_delta_with_reference_payload": -9380
+  "entry_delta_with_reference_payload": -9380,
+  "ordinary_body_verification": {
+    "run": 44236726330,
+    "encoder": {
+      "phase": "encode",
+      "executable_sha256": "556558f777154faa48fa1e117e9a6778a9d440ac6b153e923a809d1d33ae6241",
+      "one_logical_cpu": 0,
+      "canonical_checkpoint_bytes": 20000000,
+      "matched_bytes": 3367414,
+      "matched_sha256": "52c208ff8ef5e0d0844d928e5a53d0b0411eb456edec3e230ad4d49f4b167a58",
+      "elapsed_seconds": 6787.388181187
+    },
+    "decoder": {
+      "phase": "decode",
+      "executable_sha256": "8034e85daeb63e4a62c139ed8469c1ae2f056fa175b8c9ddab3c829f3189c968",
+      "one_logical_cpu": 0,
+      "canonical_checkpoint_bytes": 20000000,
+      "matched_bytes": 20000000,
+      "matched_sha256": "e3f8084643cb36eac12231108fefc98056d9e415dd7d66fd077d07a6f8796359",
+      "elapsed_seconds": 4196.978010324
+    }
+  }
 }
