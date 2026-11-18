@@ -1,11 +1,20 @@
 name: Rebuild the late quantization benchmark from the complete corpus
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: Retain the fixed benchmark alone or add disjoint full-corpus training articles
+        type: choice
+        options: [benchmark, training]
+        default: benchmark
 permissions:
   contents: read
 jobs:
   late:
     runs-on: ubuntu-24.04
     timeout-minutes: 350
+    env:
+      DATASET: ${{ inputs.dataset }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,12 +42,18 @@ jobs:
             "$d/native/cmix_dump" -n "$d/bed/censpruef_kanon.bin" ./aus >dump.log 2>&1)
           "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/late12.json" full --stream-plan
           "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/late96.json" full --windows 96 --midpoints --exclude-manifest "$d/late12.json" --stream-plan
+          if [[ "$DATASET" == training ]]; then
+            "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/train1024.json" full --windows 1024 --midpoints \
+              --exclude-manifest "$d/late12.json" --exclude-manifest "$d/late96.json" --stream-plan
+          fi
       - name: Hash the complete training priors while retaining the selected raw rows
         run: |
           set -euo pipefail
           d="$RUNNER_TEMP/late"; export OMP_NUM_THREADS=1 NEIF_TF1_WEIGHTS=none
           cd "$d/priors"
-          "$d/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/late_priors.py" "$PWD" "$d/late12.json" "$d/late96.json" \
+          extra=()
+          if [[ "$DATASET" == training ]]; then extra=(--additional-plan "$d/train1024.json"); fi
+          "$d/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/late_priors.py" "${extra[@]}" "$PWD" "$d/late12.json" "$d/late96.json" \
             "$d/native/cmix_priors" -n "$d/bed/censpruef_kanon.bin" ./aus >priors.log 2>&1 || { tail -40 priors.log; exit 1; }
       - name: Reconstruct the later articles and verify the model control
         run: |
@@ -51,6 +66,23 @@ jobs:
           research/quant/build.sh "$d/replay"
           "$d/env/bin/python" research/quant/evaluate.py "$d/replay" "$d/suite" weights-*.c5 "$d/control" --label identity
           tar -C "$d" -czf "$d/late-enwik9-benchmark.tar.gz" ./suite ./sealed96
+      - name: Package 1024 training articles disjoint from the two later evaluation suites
+        if: inputs.dataset == 'training'
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/late"
+          "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/training" full --windows 1024 --midpoints \
+            --exclude-manifest "$d/suite/manifest.json" --exclude-manifest "$d/sealed96/manifest.json" \
+            --compact-priors "$d/priors/selected.float16" --compact-plan "$d/priors/raw-plan.json"
+          "$d/env/bin/python" research/quant/check_training_split.py "$d" >"$d/split-check.json"
+          tar -C "$d" -czf "$d/train1024.tar.gz" ./training ./split-check.json
+      - uses: actions/upload-artifact@v4
+        if: success() && inputs.dataset == 'training'
+        with:
+          name: full-corpus-training
+          path: ${{ runner.temp }}/late/train1024.tar.gz
+          compression-level: 0
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:

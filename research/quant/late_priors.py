@@ -126,10 +126,12 @@ def collect(folder,plans,destination,command):
 
 if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--additional-plan", action="append", default=[], type=Path)
     p.add_argument("folder",type=Path)
     p.add_argument("plan",type=Path)
     p.add_argument("second_plan",type=Path)
     p.add_argument("command",nargs=argparse.REMAINDER)
     a=p.parse_args()
-    plans=json.loads(a.plan.read_bytes())["source_spans"]+json.loads(a.second_plan.read_bytes())["source_spans"]
+    plans=[span for path in (a.plan, a.second_plan, *a.additional_plan)
+           for span in json.loads(path.read_bytes())["source_spans"]]
     collect(a.folder.resolve(),plans,a.folder.resolve(),a.command)
