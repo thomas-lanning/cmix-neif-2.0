@@ -20,11 +20,11 @@ def between(text, first, end, new):
     return text[:lo] + new + text[hi:]
 
 
-def install(root, prefix):
+def install(root, prefix, continuous=False):
     if prefix:
         subprocess.run([sys.executable, HERE.parent/"quant/instrument_prefix.py", root, "--no-events"], check=True)
     coder = root/"src/coder"
-    shutil.copyfile(HERE/"model_rans.h", coder/"model_rans.h")
+    shutil.copyfile(HERE/("continuous_rans.h" if continuous else "model_rans.h"), coder/"model_rans.h")
     for mode in ("encoder", "decoder"):
         file = coder/(mode+".h")
         text = replace(file.read_text(), '#include <stdio.h>', '#include <stdio.h>\n#include "model_rans.h"')
@@ -118,5 +118,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("source", type=Path)
     p.add_argument("--prefix-test", action="store_true", help="enable bounded canonical encode, decode and reference trace")
+    p.add_argument("--continuous", action="store_true", help="use one 64-bit state and a bounded-RAM disk spool")
     args = p.parse_args()
-    install(args.source.resolve(), args.prefix_test)
+    install(args.source.resolve(), args.prefix_test, args.continuous)

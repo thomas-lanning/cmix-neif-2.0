@@ -1,0 +1,53 @@
+name: Measure continuous 64-bit rANS on an authenticated native round trip
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  roundtrip:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 315
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Rebuild the codec and reproduce the canonical source
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/continuous"; mkdir -p "$d"/{build,tools,bed}
+          cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/build/"
+          python3 research/ans/install.py "$d/build" --prefix-test --continuous
+          make -C "$d/build" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/tools" bed
+          python3 research/fetch_corpus.py "$d/enwik9"
+          cp dictionary/english.dic "$d/bed/.dict"; cp src/readalike_prepr/data/new_article_order "$d/bed/.new_article_order"
+          (cd "$d/bed" && "$d/tools/cmix_bed" -e "$d/enwik9" out >bed.log 2>&1)
+          curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$d/reference.archive"
+      - name: Check both fresh processes on 200k
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/continuous"
+          core=$(python3 -c 'import os;print(min(os.sched_getaffinity(0)))')
+          taskset -c "$core" bash research/ans/native_roundtrip.sh "$d/build/cmix" "$d/bed/censpruef_strom.bin" "$d/reference.archive" "$d/quick" quick
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: continuous-rans-200k
+          path: |
+            ${{ runner.temp }}/continuous/quick/result.json
+            ${{ runner.temp }}/continuous/quick/*/native.log
+            ${{ runner.temp }}/continuous/build.log
+      - name: Measure 20M and verify a new decoder against independently preprocessed bytes
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/continuous"
+          core=$(python3 -c 'import os;print(min(os.sched_getaffinity(0)))')
+          taskset -c "$core" bash research/ans/native_roundtrip.sh "$d/build/cmix" "$d/bed/censpruef_strom.bin" "$d/reference.archive" "$d/body" body
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: continuous-rans-20m
+          path: |
+            ${{ runner.temp }}/continuous/body/result.json
+            ${{ runner.temp }}/continuous/body/*/native.log
+            ${{ runner.temp }}/continuous/body/*/time
+            ${{ runner.temp }}/continuous/body/encode/payload
