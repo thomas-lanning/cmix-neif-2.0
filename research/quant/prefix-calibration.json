@@ -1,0 +1,84 @@
+{
+  "reference_check": "3367414 bytes sha256 52c208ff8ef5e0d0844d928e5a53d0b0411eb456edec3e230ad4d49f4b167a58",
+  "canonical_sha256": "c35d3073eeba70f22a2e08a50202b53eb95466e3e9f1f2702f6f9b3f96fd8718",
+  "reference_payload_sha256": "66bea93830a01df4a312a2d22fc20e1a0fc0d0863e42e889428673e7dd362e24",
+  "equal_payload": true,
+  "prefix_bytes": 3367415,
+  "checkpoints": [
+    "15282108\t2870253",
+    "16000000\t2957861",
+    "17000000\t3062251",
+    "18000000\t3170728",
+    "20000000\t3367409"
+  ],
+  "fresh_quant": [
+    {
+      "suite": "1f3c8d35380c9762babc40a11710098fc979e5eb37f0d21078ae86e1c3a85713",
+      "targets": 123550,
+      "documents": 48,
+      "all_deltas_zero": true
+    },
+    {
+      "suite": "0fcf667419736ce4a37f692ee8af308ba9018f1e9c695e18b858ac1024f9c245",
+      "targets": 40305,
+      "documents": 12,
+      "all_deltas_zero": true
+    }
+  ],
+  "shortlist_size": 17,
+  "ranking_transfer": 0.7481182829674354,
+  "controls": [
+    {
+      "candidate_sha256": "30aebe45065a5fc67a6afe8a2d3acdcf14e7e30239be9806514be87ccb25cbc4",
+      "suite_sha256": "3f4052b3fab04511a2deab08d026437eb35709ab3084e95542982a5ce32f6ffd",
+      "stream_interval": [
+        15282108,
+        20000000
+      ],
+      "scored_nonterminal_targets": 4717434,
+      "mixed_payload_delta": 501,
+      "estimated_primary_delta": 253.68636089058535,
+      "transfer": 1.9748795254155613,
+      "checkpoint_deltas": {
+        "15282108": 147,
+        "16000000": 276,
+        "17000000": 389,
+        "18000000": 503,
+        "20000000": 648
+      },
+      "windows": 24,
+      "primary_split_estimates": [
+        778.6440271732338,
+        -271.271305392063
+      ],
+      "stream_byte_extrapolation": 51732.722325352086,
+      "projected_entry_delta": 42242.722325352086
+    },
+    {
+      "candidate_sha256": "ed63cd8f001bca3a24e7629c12b9a54732698d02442a20976dca05fbbb572f7a",
+      "suite_sha256": "3f4052b3fab04511a2deab08d026437eb35709ab3084e95542982a5ce32f6ffd",
+      "stream_interval": [
+        15282108,
+        20000000
+      ],
+      "scored_nonterminal_targets": 4717434,
+      "mixed_payload_delta": 29433,
+      "estimated_primary_delta": 39342.70912783076,
+      "transfer": 0.7481182829674354,
+      "checkpoint_deltas": {
+        "15282108": 2606,
+        "16000000": 9127,
+        "17000000": 15256,
+        "18000000": 21648,
+        "20000000": 32039
+      },
+      "windows": 24,
+      "primary_split_estimates": [
+        39024.980293035325,
+        39660.43796262621
+      ],
+      "stream_byte_extrapolation": 3033189.9624792174,
+      "projected_entry_delta": 2567837.9624792174
+    }
+  ]
+}

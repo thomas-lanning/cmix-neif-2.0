@@ -1,5 +1,12 @@
 name: Rebuild and independently check adaptive rANS weights
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      underlying_model:
+        description: Underlying integer weights for the adaptive rANS container
+        type: choice
+        options: [published, equivalent-rows]
+        default: published
 permissions:
   contents: read
 jobs:
@@ -12,6 +19,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Regenerate weights and stage a clean release
+        env:
+          UNDERLYING: ${{ inputs.underlying_model }}
         run: |
           result="$RUNNER_TEMP/hybrid"
           tree="$RUNNER_TEMP/hybrid-source"
@@ -21,10 +30,17 @@ jobs:
           "$RUNNER_TEMP/env/bin/pip" install --quiet numpy==2.2.6
           g++ -O3 -std=c++17 research/ans/adaptive_matrix.cpp -o "$result/matrix"
           name=weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5
+          underlying="$tree/$name"
           sha=a13dd39b10b9bb1439acc3c084558599943810c9066ea946afb336c49dcf60a4
-          "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$tree/$name" "$result/hybrid.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/weights.json"
+          if [[ "$UNDERLYING" == equivalent-rows ]]; then
+            underlying="$result/equivalent.c5"
+            "$RUNNER_TEMP/env/bin/python" research/quant/symmetry.py export tables fit .06 "$underlying"
+            echo "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa  $underlying" | sha256sum -c -
+            sha=184b51338faabfdec11287e74faee86d8cfdd01dfdd6a94c864bb354a27b243c
+          fi
+          "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$underlying" "$result/hybrid.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/weights.json"
           echo "$sha  $result/hybrid.c5" | sha256sum -c -
-          "$RUNNER_TEMP/env/bin/python" research/ans/stage_hybrid.py "$tree" "$result/hybrid.c5" "$sha" "$result/matrix"
+          "$RUNNER_TEMP/env/bin/python" research/ans/stage_hybrid.py "$tree" "$result/hybrid.c5" "$sha" "$result/matrix" --reference "$underlying"
       - name: Build with pinned dependencies in an offline container
         run: |
           tool="$RUNNER_TEMP/base-image"; mkdir "$tool"

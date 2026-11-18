@@ -77,3 +77,5 @@ cmp /tmp/recovered.c5 weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5
 ```
 
 To build the candidate, extract upstream commit `35d1957a` into a fresh directory and run `stage_hybrid.py FRESH_TREE HYBRID_FILE HYBRID_SHA256 MATRIX_TOOL`. Build that tree with the published release toolchain. The primary payload keeps the shipped binary arithmetic coder.
+
+The release build produced a **4,038,356-byte compressor**. Its packed decoder is 185,018 bytes. Combining that decoder, the new weights and the published arithmetic payload produced an 89,342,186-byte self-extracting archive. This gives **93,380,542 bytes** if the fresh encode reproduces the complete published payload, a net saving of **8,414 bytes** including the new code. Reassembly from the original compressor reproduced the published archive SHA-256 exactly. A fresh candidate encode and an independent decode of the reassembled archive are running. [Package measurements and digests](hybrid-result.json)
