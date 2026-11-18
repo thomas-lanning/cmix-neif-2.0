@@ -19,16 +19,25 @@ on:
       training_run:
         description: Optional separate 96-article training fixture build
         type: string
+      corpus_training_run:
+        description: Optional completed full-corpus-training build with 1024 independent articles
+        type: string
       refit_from:
         description: Optional completed cpu-fisher-trial run with frozen row choices
         type: string
+  workflow_call:
+    inputs:
+      fixture_run: {type: string, required: true}
+      training_run: {type: string, required: false}
+      corpus_training_run: {type: string, required: true}
+      token_gradients: {type: boolean, default: true}
 permissions:
   contents: read
   actions: read
 jobs:
   convert:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: ${{ inputs.corpus_training_run != '' && 240 || 90 }}
     env:
       OMP_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "1"
@@ -128,19 +137,36 @@ jobs:
           name: cpu-fisher-trial
           path: ${{ runner.temp }}/frozen-fisher
       - uses: actions/download-artifact@v4
-        if: (inputs.refit_from != '' || inputs.token_gradients) && inputs.training_run != ''
+        if: (inputs.refit_from != '' || inputs.token_gradients) && inputs.training_run != '' && inputs.corpus_training_run == ''
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.training_run }}
           name: training-c40
           path: ${{ runner.temp }}/training-artifact
       - uses: actions/download-artifact@v4
-        if: (inputs.refit_from != '' || inputs.token_gradients) && inputs.training_run != ''
+        if: (inputs.refit_from != '' || inputs.token_gradients) && (inputs.training_run != '' || inputs.corpus_training_run != '')
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.training_run }}
+          run-id: ${{ inputs.training_run || inputs.fixture_run }}
           name: validation-c40
           path: ${{ runner.temp }}/validation-artifact
+      - uses: actions/download-artifact@v4
+        if: (inputs.refit_from != '' || inputs.token_gradients) && inputs.corpus_training_run != ''
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.corpus_training_run }}
+          name: full-corpus-training
+          path: ${{ runner.temp }}/training-artifact
+      - name: Select the requested verified training package
+        if: (inputs.refit_from != '' || inputs.token_gradients) && (inputs.training_run != '' || inputs.corpus_training_run != '')
+        env:
+          CORPUS_TRAINING_RUN: ${{ inputs.corpus_training_run }}
+        run: |
+          name=c40-training.tar.gz
+          if [[ -n "$CORPUS_TRAINING_RUN" ]]; then name=train1024.tar.gz; fi
+          archive="$RUNNER_TEMP/training-artifact/$name"
+          test -s "$archive"
+          echo "TRAINING_ARCHIVE=$archive" >>"$GITHUB_ENV"
       - name: Train discrete row weights and scales through the full CPU model
         if: inputs.refit_from != ''
         run: |
@@ -152,7 +178,7 @@ jobs:
           echo "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b  $d/suite/manifest.json" | sha256sum -c -
           options=()
           if [[ -d "$RUNNER_TEMP/training-artifact" ]]; then
-            tar -C "$d" -xzf "$RUNNER_TEMP/training-artifact/c40-training.tar.gz"
+            tar -C "$d" -xzf "$TRAINING_ARCHIVE"
             tar -xzOf "$RUNNER_TEMP/validation-artifact/c40-validation.tar.gz" ./suite/manifest.json >"$d/validation-manifest.json"
             options=(--training-suite "$d/training" --validation-manifest "$d/validation-manifest.json" --steps 192)
           fi
@@ -174,7 +200,7 @@ jobs:
           export TFT_TREE="$RUNNER_TEMP/trainer" PKG="$RUNNER_TEMP/checkpoint"
           source training/tf/3_train/tree/exp.env
           tar -C "$d" -xzf "$RUNNER_TEMP/fixture-artifact/c40-kit.tar.gz"
-          tar -C "$d" -xzf "$RUNNER_TEMP/training-artifact/c40-training.tar.gz"
+          tar -C "$d" -xzf "$TRAINING_ARCHIVE"
           tar -xzOf "$RUNNER_TEMP/validation-artifact/c40-validation.tar.gz" ./suite/manifest.json >"$d/validation-manifest.json"
           "$RUNNER_TEMP/env/bin/python" -u research/quant/symbol_gradients.py \
             "$RUNNER_TEMP/checkpoint" "$d/suite" "$d/training" "$d/validation-manifest.json" "$d/replay" "$d/results" | tee "$d/fit.log"

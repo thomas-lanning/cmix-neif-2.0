@@ -126,17 +126,10 @@ def training_crops(a,model):
         from validate_exports import QUICK, VALIDATION
         if digest(a.suite/"manifest.json") != QUICK or digest(a.validation_manifest) != VALIDATION:
             raise ValueError("unknown quick or validation fixture")
-        training = json.loads((training_suite/"manifest.json").read_bytes())
+        from check_training_split import validate_for_qat
         quick = json.loads((a.suite/"manifest.json").read_bytes())
         validate = json.loads(a.validation_manifest.read_bytes())
-        identity = ("input_sha256", "format", "selection")
-        if any(training[k] != quick[k] or training[k] != validate[k] for k in identity):
-            raise ValueError("training and evaluation use different source data")
-        def documents(manifest):
-            return {w["document"] for w in manifest["windows"]}
-        ids = documents(training)
-        if len(training["windows"]) != 96 or len(ids) != 96 or ids & (documents(quick)|documents(validate)):
-            raise ValueError("expected 96 distinct training documents disjoint from both evaluation suites")
+        validate_for_qat(training_suite/"manifest.json", quick, validate)
     return training_suite, crops(model,training_suite,independent=bool(a.training_suite))
 
 

@@ -11,6 +11,13 @@ on:
       artifact: {type: string, required: true, default: quantization-trial}
       validation_run: {type: string, required: true, description: Run containing independent-quantization-results}
       candidate_sha256: {type: string, required: true, description: Frozen exported model SHA-256}
+  workflow_call:
+    inputs:
+      purpose: {type: string, default: promotion}
+      exports_run: {type: string, required: true}
+      artifact: {type: string, required: true}
+      validation_run: {type: string, required: true}
+      candidate_sha256: {type: string, required: true}
 permissions:
   contents: read
   actions: read

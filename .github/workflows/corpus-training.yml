@@ -1,0 +1,61 @@
+name: Fit and screen quantized weights from a verified full-corpus training set
+on:
+  workflow_run:
+    workflows: [Rebuild the late quantization benchmark from the complete corpus]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fixture:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    outputs:
+      training: ${{ steps.find.outputs.training }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          found=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --jq 'any(.artifacts[]; .name=="full-corpus-training" and (.expired|not))')
+          echo "training=$found" >>"$GITHUB_OUTPUT"
+  fit:
+    needs: fixture
+    if: needs.fixture.outputs.training == 'true'
+    uses: ./.github/workflows/qat-checkpoint.yml
+    with:
+      corpus_training_run: ${{ format('{0}', github.event.workflow_run.id) }}
+      fixture_run: '44248300047'
+      token_gradients: true
+  validate:
+    needs: fit
+    uses: ./.github/workflows/validate-exports.yml
+    with:
+      fixture_run: '44248300047'
+      exports_run: ${{ format('{0}', github.run_id) }}
+      artifact_name: supervised-symbol-trial
+  choose:
+    needs: validate
+    runs-on: ubuntu-24.04
+    outputs:
+      model: ${{ steps.rank.outputs.model }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: independent-quantization-results
+          path: scores
+      - id: rank
+        run: |
+          best=$(jq -r '[.outcomes[] | select(.projected_entry_delta_bytes < 0)] | sort_by(.projected_entry_delta_bytes, .candidate_sha256) | .[0].candidate_sha256 // empty' scores/summary.json)
+          echo "model=$best" >>"$GITHUB_OUTPUT"
+  payload:
+    needs: choose
+    if: needs.choose.outputs.model != ''
+    uses: ./.github/workflows/quant-payload.yml
+    with:
+      exports_run: ${{ format('{0}', github.run_id) }}
+      validation_run: ${{ format('{0}', github.run_id) }}
+      artifact: supervised-symbol-trial
+      candidate_sha256: ${{ needs.choose.outputs.model }}
