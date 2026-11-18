@@ -35,6 +35,10 @@ jobs:
           py="$RUNNER_TEMP/env/bin/python"
           out="$RUNNER_TEMP/checkpoint"
           mkdir "$out"
+          # The CPU converter uses the model-form environment from the training chain.
+          # It reconstructs parameters without opening training batches.
+          export PKG="$out"
+          source training/tf/3_train/tree/exp.env
           "$py" research/quant/qat_seed.py "$out/plain.c5" >"$out/container.json"
           echo "26e572080c240b6c8eb59a8dc8aab6ab6591efac695424f5942abf1d8fdde712  $out/plain.c5" | sha256sum -c -
           "$py" training/tf/3_train/container_to_tch.py --container "$out/plain.c5" \

@@ -51,6 +51,8 @@ Run `python3 research/quant/qat_seed.py /scratch/release-plain.c5` in a NumPy en
 With the [upstream training environment](../../training/README.md) assembled, its CPU conversion step can then produce the trainable checkpoint and the per-row integer ranges.
 
 ```sh
+export TFT_TREE=/scratch/trainer PKG=/scratch/training-package
+source training/tf/3_train/tree/exp.env
 python3 training/tf/3_train/container_to_tch.py --container /scratch/release-plain.c5 \
   --cfg training/tf/3_train/chain/06_qat.json --strict /scratch/strict.tch \
   --qrow /scratch/row-ranges.npz --report /scratch/conversion.json
