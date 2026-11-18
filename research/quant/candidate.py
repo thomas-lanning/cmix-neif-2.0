@@ -13,7 +13,8 @@ def belongs(t,family):
     if family==1:
         return t.name.endswith("mlp.up.weight.scale") or t.name.endswith("mlp.down.weight.scale")
     if family==2:
-        return t.name.endswith("_convolution.weight")
+        # Query convolution rows carry part of the NP2 payload in their strict order.
+        return t.name.endswith(("key_convolution.weight","value_convolution.weight"))
     if family==3:
         return t.name.endswith((".q_mix.w",".q_mlp.w",".q_final.w"))
     if family==4:
