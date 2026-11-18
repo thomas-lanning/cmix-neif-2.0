@@ -29,19 +29,32 @@ template<class Codec> int row_reference(int8_t* q,size_t rows,size_t cols,size_t
   size_t chosen=0;
   bool enabled=false,negative=false;
   if constexpr(std::is_same_v<Codec,Writer>) {
-    int64_t current=0,best_dot=0,best_energy=1;
-    for (size_t k=0;k<cols;++k) {const int v=value(i,k);current+=v*v;}
-    for (size_t j=0;j<i;++j) {
-      int64_t dot=0,energy=0;
-      for (size_t k=0;k<cols;++k) {
-        const int a=value(j,k);dot+=a*value(i,k);energy+=a*a;
-      }
-      if (energy && dot*dot*best_energy>best_dot*best_dot*energy) {
-        chosen=j;best_dot=dot;best_energy=energy;
-      }
+    RowChoice local;
+    RowChoice* entry=&local;
+    if (codec.row_choices) {
+      auto& indices=(*codec.row_choices)[transposed];
+      if (indices.empty()) indices.resize(rows);
+      entry=&indices.at(i);
     }
-    enabled=best_dot*best_dot*10000>current*best_energy*threshold*threshold;
-    negative=best_dot<0;
+    if (!entry->ready) {
+      int64_t current=0,best_dot=0,best_energy=1;
+      for (size_t k=0;k<cols;++k) {const int v=value(i,k);current+=v*v;}
+      for (size_t j=0;j<i;++j) {
+        int64_t dot=0,energy=0;
+        for (size_t k=0;k<cols;++k) {
+          const int a=value(j,k);dot+=a*value(i,k);energy+=a*a;
+        }
+        if (energy && dot*dot*best_energy>best_dot*best_dot*energy) {
+          entry->row=j;best_dot=dot;best_energy=energy;
+        }
+      }
+      entry->dot=best_dot;
+      entry->product=current*best_energy;
+      entry->ready=true;
+    }
+    chosen=entry->row;
+    enabled=entry->dot*entry->dot*10000 > entry->product*threshold*threshold;
+    negative=entry->dot<0;
   }
   unsigned use=codec.bit(bounded(flag.predict(total/2,4)),enabled);flag.update(use);
   if (!use) return 0;
@@ -81,7 +94,7 @@ void pass(int8_t* weights,size_t rows,size_t cols,unsigned mode,Codec& codec) {
     empty_rows.update(empty);
     int ancestor=0;
     if (neighbour && !empty) {
-      check(rows<=256 && cols<=256);
+      check(rows<=1024 && cols<=1024);
       ancestor=row_reference(weights,rows,cols,i,transpose,(variant&4)?42:22,reference_flag,codec);
     }
     RTree row{}; unsigned row_abs=0;int previous=0;

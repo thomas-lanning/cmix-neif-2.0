@@ -37,13 +37,13 @@ jobs:
             underlying="$result/equivalent.c5"
             "$RUNNER_TEMP/env/bin/python" research/quant/symmetry.py export tables fit .06 "$underlying"
             echo "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa  $underlying" | sha256sum -c -
-            sha=ebf41b7f66880a8a27e5cf91d8a023fbaa7f202b6ab242c7f18cc234eed68a90
+            sha=46dbc36cc83bdcea0b5248ee975f24b8ff311d5120cbc21bb43430ef7ea00fba
           fi
           "$RUNNER_TEMP/env/bin/python" research/ans/hybrid_weights.py pack "$underlying" "$result/framed.c5" --matrix-model adaptive --matrix-tool "$result/matrix" >"$result/framed.json"
           echo "$sha  $result/framed.c5" | sha256sum -c -
           "$RUNNER_TEMP/env/bin/python" research/ans/chain_weights.py "$underlying" "$result/framed.c5" \
             "$result/matrix" "$result/chain-matrix" "$result/hybrid.c5" >"$result/weights.json"
-          sha=3290f8707d906a5babab14025c53767a7fe75d5ea1a2b908ac097aea2385721c
+          sha=b422cefa6821f6aebd654d81b5baacee07ad9411b73ae60a73ddbbbaa126e311
           echo "$sha  $result/hybrid.c5" | sha256sum -c -
           "$RUNNER_TEMP/env/bin/python" research/ans/stage_hybrid.py "$tree" "$result/hybrid.c5" "$sha" "$result/chain-matrix" --reference "$underlying"
       - name: Build with pinned dependencies in an offline container

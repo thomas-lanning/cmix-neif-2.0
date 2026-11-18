@@ -22,7 +22,15 @@ struct Count {
 };
 using Tree=std::array<Count,16>;
 
+struct RowChoice {
+  size_t row=0;
+  int64_t dot=0, product=0;
+  bool ready=false;
+};
+
 struct Writer {
+  // The offline mode search reuses the same matrix across trials.
+  std::array<std::vector<RowChoice>,2>* row_choices=nullptr;
   std::vector<uint16_t> events;
   unsigned bit(unsigned p,unsigned actual) {
     events.push_back(uint16_t(2*p+actual));

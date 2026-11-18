@@ -15,10 +15,12 @@ int main(int argc,char** argv) {
   if (!std::strcmp(argv[1],"encode")) {
     check(std::fread(q.data(),1,q.size(),in)==q.size() && std::getc(in)==EOF);
     for(int v:q) check(v>=-7 && v<=7);
+    std::array<std::vector<RowChoice>,2> choices;
     for (unsigned mode=0; mode<48; ++mode) {
-      if (mode>=32 && (rows>256 || cols>256 || rows<64 || cols<64)) continue;
+      if (mode>=32 && (rows>1024 || cols>1024 || rows<16 || cols<16)) continue;
       if (mode<16 && ((mode&7)==4 || (mode&7)==6)) continue;
       Writer writer;
+      writer.row_choices=&choices;
       selected_pass(q.data(),rows,cols,mode,writer);
       auto trial=writer.finish();
       if (encoded.empty() || trial.size()+1<encoded.size()) {
