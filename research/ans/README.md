@@ -26,6 +26,19 @@ The [profile-guided CI reproduction](https://github.com/thomas-lanning/cmix-neif
 
 On 200,000 canonical input bytes, the rANS stream occupied **42,728 bytes**, compared with **42,694** for independently terminated arithmetic coding, including the same five-byte header. A fresh decoder process, given the rANS stream and the published weights, reproduced all 200,000 canonical bytes. It checked the terminal rANS state and consumed the complete input. All 42,688 continuing arithmetic-coded bytes after the header matched the published archive. The small sample ends in the metadata region.
 
+From the fork root on x86-64 Linux, build in a fresh scratch directory. The benchmark preparation produces the full canonical stream in `bed/censpruef_strom.bin`. The driver verifies that stream, the weights and the published self-extracting archive by SHA-256.
+
+```bash
+mkdir /scratch/cmix-rans
+git archive HEAD src makefile encoder_split.lds runtime_exports.map pgo_data | tar -x -C /scratch/cmix-rans
+python3 research/ans/install.py /scratch/cmix-rans --prefix-test
+make -C /scratch/cmix-rans -j2 prof_use CC=clang++-18
+bash research/ans/native_roundtrip.sh /scratch/cmix-rans/cmix /scratch/full/bed/censpruef_strom.bin \
+  /data/published/archive9 /scratch/rans-200k quick
+```
+
+Choose `body` with a different output directory to encode and decode the first 20 million canonical bytes. The result file records both stored lengths, the fresh decoder's SHA-256 and the matched arithmetic prefix.
+
 The separate causal correction in `calibration.cpp` estimates the observed-to-expected error ratio from confidence and previous coded bits. Selecting among 54 settings on the first half of the verified trace saved four bytes on that half and two on the second. Actual packaged code costs would also count.
 
 ## Reproduction
