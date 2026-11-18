@@ -1,0 +1,83 @@
+name: Run a quantization experiment on the fixed quick benchmark
+on:
+  workflow_dispatch:
+    inputs:
+      experiment_ref:
+        description: Branch or commit containing the candidate.py hypothesis
+        type: string
+        default: main
+      hypothesis:
+        description: Expected change in weight bytes and prediction loss
+        type: string
+        required: true
+      fractions:
+        description: Space-separated exporter arguments
+        type: string
+        default: "0.125 0.25 0.5"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  trial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out the fixed evaluator
+        uses: actions/checkout@v4
+        with:
+          ref: d1af0f6a5b2bd19165d6a3a64bc4c4bdc95de20c
+          path: evaluator
+          persist-credentials: false
+      - name: Check out the experimental exporter
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.experiment_ref }}
+          path: experiment
+          persist-credentials: false
+      - name: Find a completed fixture build
+        id: fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow portable-benchmark.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          test -n "$run" || { echo 'Run the portable benchmark build to produce the pinned suite first.'; exit 1; }
+          echo "run=$run" >>"$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: portable-c40
+          run-id: ${{ steps.fixture.outputs.run }}
+          path: ${{ runner.temp }}/fixture-download
+      - name: Verify the fixture, run the hypothesis and record each decision
+        env:
+          HYPOTHESIS: ${{ inputs.hypothesis }}
+          FRACTIONS: ${{ inputs.fractions }}
+          FIXTURE_BUILD: ${{ steps.fixture.outputs.run }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/trial"; mkdir "$out" "$RUNNER_TEMP/fixture"
+          tar -xzf "$RUNNER_TEMP/fixture-download/c40-kit.tar.gz" -C "$RUNNER_TEMP/fixture" ./suite
+          suite="$RUNNER_TEMP/fixture/suite"
+          echo "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b  $suite/manifest.json" | sha256sum -c -
+          evaluator/research/quant/build.sh "$RUNNER_TEMP/replay"
+          python3 -m venv "$RUNNER_TEMP/env"
+          "$RUNNER_TEMP/env/bin/pip" install --quiet numpy==2.2.6
+          python3 - "$out" <<'PY'
+          from pathlib import Path
+          import json,os,subprocess,sys
+          def commit(repo):
+              return subprocess.check_output(["git","-C",repo,"rev-parse","HEAD"],text=True).strip()
+          report=dict(hypothesis=os.environ["HYPOTHESIS"],parameters=os.environ["FRACTIONS"],
+                      fixture_build=os.environ["FIXTURE_BUILD"],generator_commit=commit("experiment"),
+                      evaluator_commit=commit("evaluator"))
+          (Path(sys.argv[1])/"experiment.json").write_text(json.dumps(report,indent=2)+"\n")
+          PY
+          read -ra values <<<"$FRACTIONS"
+          "$RUNNER_TEMP/env/bin/python" evaluator/research/quant/loop.py "$RUNNER_TEMP/replay" "$suite" "$out" \
+            --generator experiment/research/quant/candidate.py --fractions "${values[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quantization-trial
+          path: ${{ runner.temp }}/trial/
+          retention-days: 30
