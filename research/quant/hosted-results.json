@@ -467,5 +467,100 @@
       7307.417330831182
     ],
     "promotion": false
+  },
+  "low_precision_cache": {
+    "source_run": 44234983659,
+    "stored_bytes_per_key": {
+      "original": 64,
+      "two_bits": 32,
+      "three_bits": 48
+    },
+    "three_bit_native_ring_entries": 20971520,
+    "original_ring_entries": 16777216,
+    "heldout": {
+      "16400000": {
+        "sha256": "9ed958689a4c04cbb717208fe81c8b20851e438f064fa31d3eaf414003dd1b29",
+        "measurements": {
+          "2": {
+            "queries": 1536,
+            "delta_bits": 1.7616822200279199,
+            "mean_top32_overlap": 0.8243815104166666,
+            "quarter_deltas_bits": [
+              2.225395937056268,
+              -0.6660940638493071,
+              -1.0649911015600246,
+              1.2673714483809837
+            ]
+          },
+          "3": {
+            "queries": 1536,
+            "delta_bits": 2.086962326694612,
+            "mean_top32_overlap": 0.8942464192708334,
+            "quarter_deltas_bits": [
+              0.9227272246576346,
+              1.02353733275311,
+              -1.424532543724287,
+              1.5652303130081544
+            ]
+          }
+        }
+      },
+      "17400000": {
+        "sha256": "a88dc6a5081099c4487817d00653b9d092f9c3c122a0975149e2c88f8e7b2f00",
+        "measurements": {
+          "2": {
+            "queries": 1536,
+            "delta_bits": 9.463669771585574,
+            "mean_top32_overlap": 0.8139241536458334,
+            "quarter_deltas_bits": [
+              -0.5278470935878637,
+              4.915765172452648,
+              2.3610566646508793,
+              2.7146950280699107
+            ]
+          },
+          "3": {
+            "queries": 1536,
+            "delta_bits": -0.4288475156957584,
+            "mean_top32_overlap": 0.8880615234375,
+            "quarter_deltas_bits": [
+              -1.1665651052430481,
+              0.8397395416248824,
+              -0.006527055163084605,
+              -0.09549489691450808
+            ]
+          }
+        }
+      }
+    },
+    "frozen_levels": {
+      "2": [
+        -2,
+        0,
+        1,
+        3
+      ],
+      "3": [
+        -6,
+        -3,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        6
+      ]
+    }
+  },
+  "matched_interval_fixture": {
+    "run": 44248300047,
+    "manifest_sha256": "3f4052b3fab04511a2deab08d026437eb35709ab3084e95542982a5ce32f6ffd",
+    "kit_sha256": "efc2a9d713c6fa6fe64f3091dbc1750279c02bfebc7cce2e1eabeeed1f76cbf7",
+    "documents": 24,
+    "targets": 57381,
+    "canonical_interval": [
+      15282108,
+      20000000
+    ]
   }
 }

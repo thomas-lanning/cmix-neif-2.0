@@ -1,11 +1,20 @@
-name: Encode and independently decode 20M with the frozen final mixer
-on: workflow_dispatch
+name: Encode and independently decode 20M with a frozen probability model
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Frozen probability change to measure
+        type: choice
+        options: [fitted-mixer, cache-int3]
+        default: fitted-mixer
 permissions:
   contents: read
 jobs:
   roundtrip:
     runs-on: ubuntu-24.04
     timeout-minutes: 330
+    env:
+      VARIANT: ${{ inputs.variant }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,7 +24,11 @@ jobs:
           set -euo pipefail
           d="$RUNNER_TEMP/mixer"; mkdir -p "$d"/{build,tools,bed,encode,decode}
           cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/build/"
-          python3 research/ans/native_mixer.py "$d/build" --bounded
+          if [[ "$VARIANT" == cache-int3 ]]; then
+            python3 research/quant/cache_int3.py "$d/build" --bounded
+          else
+            python3 research/ans/native_mixer.py "$d/build" --bounded
+          fi
           make -C "$d/build" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
           bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/tools" bed
           python3 research/fetch_corpus.py "$d/enwik9"
@@ -31,14 +44,18 @@ jobs:
           core=$(python3 -c 'import os;print(min(os.sched_getaffinity(0)))')
           export NEIF_CANDIDATE_FNV=aec368ac6a568632 NEIF_CANONICAL_STREAM="$d/bed/censpruef_strom.bin"
           /usr/bin/time -v taskset -c "$core" "$d/build/cmix" -e "$NEIF_CANONICAL_STREAM" payload >native.log 2>&1
-          cmp -n 2870258 "$d/published.payload" payload
+          if [[ "$VARIANT" == fitted-mixer ]]; then
+            cmp -n 2870258 "$d/published.payload" payload
+          else
+            cmp -n 5 "$d/published.payload" payload
+          fi
           sha256sum payload >payload.sha256
           wc -c payload
           cat prefix-sizes.tsv
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fitted-mixer-encode
+          name: ${{ inputs.variant }}-encode
           path: |
             ${{ runner.temp }}/mixer/encode/payload*
             ${{ runner.temp }}/mixer/encode/*.log
@@ -56,7 +73,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fitted-mixer-decode
+          name: ${{ inputs.variant }}-decode
           path: |
             ${{ runner.temp }}/mixer/decode/native.log
             ${{ runner.temp }}/mixer/decode/canonical.sha256
