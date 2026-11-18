@@ -1,0 +1,148 @@
+{
+  "suite_sha256": "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b",
+  "suite_rows": 42238,
+  "suite_targets": 34706,
+  "portable_reproduction": {
+    "run": 44237376052,
+    "kit_sha256": "1a2a42bdb13d39a8bbc8e25e90a34054e58635292699546a53ec8954c4a684e1",
+    "kit_bytes": 9290175,
+    "replay_sha256": "fcaaae23117186adf210c362ac636026e2d96e6712d95cb298b1a8fd84b1c7ad",
+    "replay_seconds": [
+      18.12209289799989,
+      18.97072132800008
+    ]
+  },
+  "rare_neurons": [
+    {
+      "hypothesis": "Removing a few MLP units with low measured activation and downstream weight energy saves more embedded bytes than the prediction cost.",
+      "parameters": "1 8 32",
+      "fixture_build": "44237376052",
+      "generator_commit": "ceb061aed07235c600d1608aeb2b7c4265697436",
+      "evaluator_commit": "d1af0f6a5b2bd19165d6a3a64bc4c4bdc95de20c",
+      "run": 44240484084,
+      "measurements": [
+        {
+          "fraction": 1.0,
+          "candidate_sha256": "35bf02060782fe2eb4db0e3f21b87273a1db8f13cb5ded571b03a8a5690fb615",
+          "twice_weight_delta": -216,
+          "search_proxy_bytes": 788.6684424969507,
+          "confirmation_proxy_bytes": 11721.62560798101,
+          "decision": "discard"
+        },
+        {
+          "fraction": 8.0,
+          "candidate_sha256": "c6c61aa7129a862f559c428e9496dbc2677761b259187f457c1a8bfc273bf02c",
+          "twice_weight_delta": -1910,
+          "search_proxy_bytes": 59894.970552206745,
+          "confirmation_proxy_bytes": 3836.0564323734125,
+          "decision": "discard"
+        },
+        {
+          "fraction": 32.0,
+          "candidate_sha256": "c01d6ada5f892bdc72f7b07686ccbcd3e454c9d3f9acd4891d4a583f2f5abfee",
+          "twice_weight_delta": -7702,
+          "search_proxy_bytes": -41251.08980494693,
+          "confirmation_proxy_bytes": 33855.576405684034,
+          "decision": "discard"
+        }
+      ]
+    },
+    {
+      "hypothesis": "After deleting low-energy neurons failed confirmation, coarsening both incident matrices should preserve their useful activations while shrinking the stored alphabet.",
+      "parameters": "-8 -32 -128",
+      "fixture_build": "44237376052",
+      "generator_commit": "ceb061aed07235c600d1608aeb2b7c4265697436",
+      "evaluator_commit": "d1af0f6a5b2bd19165d6a3a64bc4c4bdc95de20c",
+      "run": 44241327509,
+      "measurements": [
+        {
+          "fraction": -8.0,
+          "candidate_sha256": "a1c16081e3fad16438a3d3ac63c51a6faf08f0ad1dd05bf34ce6fda963fc7986",
+          "twice_weight_delta": -136,
+          "search_proxy_bytes": 49005.34388203317,
+          "confirmation_proxy_bytes": -21893.953339904565,
+          "decision": "discard"
+        },
+        {
+          "fraction": -32.0,
+          "candidate_sha256": "8a63fc8775256bf700b312b19fc8c4e9327e6e0e2c9a3836de816dff24781f35",
+          "twice_weight_delta": -470,
+          "search_proxy_bytes": 2453.2910380169606,
+          "confirmation_proxy_bytes": -464.6993236039753,
+          "decision": "discard"
+        },
+        {
+          "fraction": -128.0,
+          "candidate_sha256": "659f12bb83e89e4f4974aa10c35878afd2d0081d8c80862889e12f148b8ae83b",
+          "twice_weight_delta": -1860,
+          "search_proxy_bytes": 61421.8422559978,
+          "confirmation_proxy_bytes": -3360.4343004995144,
+          "decision": "discard"
+        }
+      ]
+    }
+  ],
+  "static_head_calibration": {
+    "scope": "confidence",
+    "integer_table": [
+      1,
+      3,
+      -1,
+      6,
+      6,
+      16,
+      -6,
+      -22
+    ],
+    "table_bytes": 8,
+    "confirmation": [
+      {
+        "document": 117,
+        "targets": 2339,
+        "delta_bits": 0.7107403068237166
+      },
+      {
+        "document": 904,
+        "targets": 878,
+        "delta_bits": 0.09245303732424348
+      },
+      {
+        "document": 2238,
+        "targets": 3953,
+        "delta_bits": 2.4496674583189177
+      },
+      {
+        "document": 3258,
+        "targets": 4052,
+        "delta_bits": -0.9383671454489235
+      },
+      {
+        "document": 4114,
+        "targets": 4006,
+        "delta_bits": 0.3929348919950211
+      },
+      {
+        "document": 4808,
+        "targets": 4017,
+        "delta_bits": 5.98614397675115
+      }
+    ],
+    "targets": 19245,
+    "delta_bits": 8.693572525764125,
+    "run": 44240327864
+  },
+  "qat_checkpoint": {
+    "run": 44240939697,
+    "tensors": 597,
+    "n_params": 9325119,
+    "integer_checks": {
+      "tensors": 155,
+      "mismatch": 0
+    },
+    "rows_by_qmax_1_3_7": [
+      101,
+      4,
+      39250
+    ]
+  }
+}

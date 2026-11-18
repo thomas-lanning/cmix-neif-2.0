@@ -4,6 +4,17 @@ The baseline is `marwoelk/cmix-neif-2.0` at `35d1957a5074db802fc134126afc77b76d9
 
 ## Baseline
 
+For the fastest start, download `portable-c40` from the [independent benchmark build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44237376052). Its `c40-kit.tar.gz` is 9,290,175 bytes and has SHA-256 `1a2a42bdb13d39a8bbc8e25e90a34054e58635292699546a53ec8954c4a684e1`. On x86-64-v3 Linux, extract it into a fresh directory and run these commands from the fork checkout.
+
+```bash
+mkdir /tmp/neif-c40
+tar -C /tmp/neif-c40 -xzf /path/to/c40-kit.tar.gz
+python3 research/quant/evaluate.py /tmp/neif-c40/replay /tmp/neif-c40/suite \
+  weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5 /tmp/neif-c40/results --label identity
+```
+
+The Linux rebuild reproduced all 12 fixture hashes, the replay executable hash and the original per-article results for an identity and a changed model. Replaying a candidate took 18–19 seconds on that runner, after export and reference caching. The changed control saved 610 bytes across its two weight copies but increased the confirmation estimate by 13,867 bytes. The repeated runner can also build the 48-article follow-up set with the `include_validation` option. [Hosted results](quant/hosted-results.json)
+
 The manual **Rebuild published compressor** workflow runs upstream’s install and offline build recipe inside Ubuntu 24.04 and verifies the resulting executable against the published SHA-256. On a native x86-64-v3 Linux worker, pass that binary or the hash-identical published executable and the original corpus to the driver. Pin its entire process tree to one allowed logical CPU.
 
 ```bash

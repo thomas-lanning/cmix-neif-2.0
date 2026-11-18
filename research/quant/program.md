@@ -59,3 +59,5 @@ python3 training/tf/3_train/container_to_tch.py --container /scratch/release-pla
 ```
 
 The upstream training chain used a rate coefficient of `2.7e-9` mean nats per model bit. With two stored copies, 487,298,491 scored targets, and a measured fraction α of a primary-head loss change transferred to the archive, the local break-even coefficient is `2 × ln(2) / (α × 487298491)`. The two prefix controls imply a range from `1.44e-9` to `3.80e-9`. This is a starting range for paired experiments. Rank exports using measured packaged weights, fresh articles and the native mixed-coder interval. [Prefix measurements](prefix-calibration.json)
+
+An independent CPU run loaded the recovered weights into upstream's 9,325,119-parameter model. Its quantizers reconstructed all 155 integer weight matrices exactly. The `quantization-aware-start` artifact contains `strict.tch`, per-row ranges, the environment and digests. [Verified training checkpoint](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44240939697)
