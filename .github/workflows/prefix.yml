@@ -1,0 +1,26 @@
+name: Build mixed-coder prefix benchmark
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the instrumented release encoder
+        run: |
+          dest="$RUNNER_TEMP/prefix"
+          mkdir "$dest"
+          cp -r src makefile encoder_split.lds runtime_exports.map "$dest/"
+          python3 research/quant/instrument_prefix.py "$dest"
+          make -C "$dest" -j4 cmix CC=clang++-18 >"$dest/build.log" 2>&1 || { tail -70 "$dest/build.log"; exit 1; }
+          cd "$dest"
+          tar czf prefix-tool.tar.gz cmix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-prefix-tool
+          path: ${{ runner.temp }}/prefix/prefix-tool.tar.gz
+          retention-days: 14

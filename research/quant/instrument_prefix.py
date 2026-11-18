@@ -1,0 +1,68 @@
+"""Instrument a scratch release tree to measure a true mixed-coder prefix."""
+from pathlib import Path
+import sys
+
+
+def once(source, old, new):
+    if source.count(old) != 1:
+        raise ValueError(f"release source changed at {old[:60]}")
+    return source.replace(old, new, 1)
+
+
+root = Path(sys.argv[1])
+runner = root / "src/runner.cpp"
+src = runner.read_text()
+# The caller supplies the bit-identical published dictionary and article order.
+# Keep the entire corpus preprocessing path and final predictor as shipped.
+start = src.index("    if (selfextract_comp() != 0)")
+end = src.index('    console_progress::Phase("preprocessing");', start)
+src = src[:start] + src[end:]
+src = once(src, "  Encoder e(os, p);", """  Encoder e(os, p);
+  FILE* log = fopen("prefix-sizes.tsv", "wx");
+  if (!log) std::exit(2);
+  bool capture = std::getenv("NEIF_CAPTURE_ARTICLE") != nullptr;""")
+src = once(src, "      p->SemByteStart(sem_pb);", """      research_capture = capture && pos >= 16000000 && pos < 16262144;
+      p->SemByteStart(sem_pb);""")
+src = once(src, "      ++pos;\n    }\n  }\n  e.Flush();", """      ++pos;
+      if (pos == 15282108 || pos == 16000000 || pos == 17000000 || pos == 18000000 || pos == 20000000) {
+        fprintf(log, "%llu\\t%zu\\n", pos, e.OutputSize());
+        fflush(log);
+      }
+      if (pos == 20000000) {
+        e.Flush();
+        if (fclose(log) || fflush(os)) std::exit(4);
+        std::exit(0);
+      }
+    }
+  }
+  e.Flush();""")
+runner.write_text("extern bool research_capture;\n" + src)
+
+encoder = root / "src/coder/encoder.cpp"
+src = encoder.read_text()
+src = once(src, "  const unsigned int xmid = floor_stage::Mid(x1_, x2_, p_->SemCorrect(",
+           "  const unsigned int actual_p = p_->SemCorrect(")
+src = once(src, "(31 - __builtin_clz(p_->BbBitCtx() | 1u)) & 7)));",
+           "(31 - __builtin_clz(p_->BbBitCtx() | 1u)) & 7));\n"
+           "  if (research_capture) research_event(actual_p, bit);\n"
+           "  const unsigned int xmid = floor_stage::Mid(x1_, x2_, actual_p);")
+src = once(src, "  if (p > 65534) p = 65534;", "  if (p > 65534) p = 65534;\n"
+           "  if (research_capture) research_event((uint32_t)p << 16, bit);")
+encoder.write_text("""#include <cstdio>
+#include <cstdint>
+#include <cstdlib>
+bool research_capture = false;
+static void research_event(uint32_t probability, int bit) {
+  static FILE* out = std::fopen("article-events.bin", "wb");
+  unsigned char symbol = bit;
+  if (!out || std::fwrite(&probability, 4, 1, out) != 1 || std::fwrite(&symbol, 1, 1, out) != 1)
+    std::exit(3);
+}
+""" + src)
+
+reader = root / "src/tf1/weights_io_compressed.cpp"
+src = once(reader.read_text(), "  if (h != 0xaec368ac6a568632ULL)",
+    """  const char* expected = std::getenv("NEIF_CANDIDATE_FNV");
+  if (!expected || !*expected || size < 24 || n != size || std::memcmp(buf, "FX2TFWP5", 8) ||
+      h != std::strtoull(expected, nullptr, 16))""")
+reader.write_text(src)
