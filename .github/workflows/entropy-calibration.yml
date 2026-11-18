@@ -1,0 +1,43 @@
+name: Capture and verify actual entropy decisions in six article-body spans
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the release-profiled decoder with bounded calibration traces
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/calibration"; mkdir "$d"
+          cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/"
+          python3 research/ans/decoder_calibration.py "$d"
+          make -C "$d" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
+          cp weights-*.c5 "$d/"
+      - name: Decode and authenticate 18 million canonical bytes
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/calibration"
+          cd "$d"
+          curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o published.archive
+          python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload published.archive
+          ./cmix -d published.payload output >native.log 2>&1
+          echo "ab41f3c44d66fc49d7d9eba31c5ee3e2794fc99e2d3b6fe9d1f431af16f977a7  output.cmix.temp" | sha256sum -c -
+          test "$(wc -c <output.cmix.temp)" -eq 18000000
+          sha256sum events-*.bin >streams.sha256
+          head -c 4000000 published.payload >oracle-prefix.bin
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-entropy-calibration
+          path: |
+            ${{ runner.temp }}/calibration/events-*.bin
+            ${{ runner.temp }}/calibration/streams.sha256
+            ${{ runner.temp }}/calibration/oracle-prefix.bin
+            ${{ runner.temp }}/calibration/build.log
+            ${{ runner.temp }}/calibration/native.log
+          retention-days: 30
