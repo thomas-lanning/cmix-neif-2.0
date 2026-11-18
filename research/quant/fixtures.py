@@ -118,6 +118,7 @@ def main():
             selected = stream[indices[:end][valid] - 1]
             if args.plan_only:
                 spans.append((int(selected.min()), int(selected.max())+1))
+                windows.append(dict(document=int(doc)))
                 used.add(doc)
                 break
             rows = np.zeros(end, dtype=ROW)
@@ -151,7 +152,8 @@ def main():
             else:
                 merged.append([lo, hi])
         with args.output.open("x") as f:
-            json.dump(dict(prior_rows=len(origins), raw_sha256=reference["raw_sha256"], spans=merged), f)
+            json.dump(dict(selection=args.selection, windows=windows, prior_rows=len(origins),
+                           raw_sha256=reference["raw_sha256"], spans=merged), f)
         return
     manifest = args.output / "manifest.tmp"
     meta=dict(format=1, selection=args.selection,

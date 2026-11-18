@@ -6,6 +6,10 @@ on:
         description: Also reconstruct the disjoint 48-article suite
         type: boolean
         default: false
+      include_training:
+        description: Include the separate 96-article training set with validation
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -62,18 +66,28 @@ jobs:
             ${{ runner.temp }}/research/c40/*/*.log
           retention-days: 30
       - name: Rebuild 48 independent validation articles
-        if: inputs.include_validation
+        if: inputs.include_validation || inputs.include_training
+        env:
+          TRAINING: ${{ inputs.include_training }}
         run: |
           set -euo pipefail
           scratch="$RUNNER_TEMP/research"
           export PATH="$scratch/env/bin:$PATH"
-          bash research/quant/validation_c40.sh "$scratch/tools" "$scratch/c40" "$scratch/validation"
+          options=()
+          if [[ "$TRAINING" == true ]]; then options=(--training); fi
+          bash research/quant/validation_c40.sh "$scratch/tools" "$scratch/c40" "$scratch/validation" "${options[@]}"
       - uses: actions/upload-artifact@v4
-        if: always() && inputs.include_validation
+        if: always() && (inputs.include_validation || inputs.include_training)
         with:
           name: validation-c40
           path: |
             ${{ runner.temp }}/research/validation/c40-validation.tar.gz
             ${{ runner.temp }}/research/validation/ranges.json
             ${{ runner.temp }}/research/validation/priors.log
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: inputs.include_training
+        with:
+          name: training-c40
+          path: ${{ runner.temp }}/research/validation/c40-training.tar.gz
           retention-days: 30
