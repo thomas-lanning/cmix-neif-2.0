@@ -22,6 +22,7 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("selection", choices=["40000000", "full"])
     parser.add_argument("--windows", type=int, default=12)
+    parser.add_argument("--midpoints", action="store_true", help="sample the midpoint of each equal-width stream interval")
     parser.add_argument("--exclude-manifest", type=Path, action="append", default=[])
     parser.add_argument("--start", type=int, help="first allowed source position in the dump (includes its 6-byte header)")
     parser.add_argument("--stop", type=int, help="exclusive source position in the dump")
@@ -72,7 +73,11 @@ def main():
     stop = args.stop if args.stop is not None else expected
     if not 0 <= first < stop-200_000 or stop > expected:
         raise ValueError("invalid sampling interval")
-    for offset in np.linspace(first, stop - 200_000, args.windows, dtype=np.int64):
+    offsets = np.linspace(first, stop - 200_000, args.windows, dtype=np.int64)
+    if args.midpoints:
+        edges = np.linspace(first, stop - 200_000, args.windows+1, dtype=np.int64)
+        offsets = (edges[1:] + edges[:-1]) // 2
+    for offset in offsets:
         for doc in range(int(np.searchsorted(src_at_start, offset)), len(starts) - 1):
             if doc in used:
                 continue
@@ -117,6 +122,8 @@ def main():
     meta=dict(format=1, selection=args.selection,
         input_sha256="159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc",
         windows=windows)
+    if args.midpoints:
+        meta["sampling"] = "midpoints of equal-width stream intervals"
     if args.start is not None or args.stop is not None:
         meta["source_interval"] = [first, stop]
         # Count the target opportunities in the same source interval as the
