@@ -39,6 +39,8 @@ bash research/ans/native_roundtrip.sh /scratch/cmix-rans/cmix /scratch/full/bed/
 
 Choose `body` with a different output directory to encode and decode the first 20 million canonical bytes. The result file records both stored lengths, the fresh decoder's SHA-256 and the matched arithmetic prefix.
 
+The completed body test reached the Wikipedia article text. Arithmetic coding used **3,367,415 bytes** and bounded rANS used **3,370,322 bytes**. A fresh native decoder recovered all 20,000,000 bytes and consumed its entire rANS stream. Keeping arithmetic coding for the text saves 2,907 bytes on this comparison. [Native body result](body-result.json)
+
 The separate causal correction in `calibration.cpp` estimates the observed-to-expected error ratio from confidence and previous coded bits. Selecting among 54 settings on the first half of the verified trace saved four bytes on that half and two on the second. Actual packaged code costs would also count.
 
 ## Reproduction

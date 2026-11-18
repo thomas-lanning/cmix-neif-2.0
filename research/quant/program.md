@@ -41,3 +41,19 @@ After each sweep, inspect `trials.jsonl` and `sweep.jsonl`. Choose one new hypot
 For hosted trials, first run the manual **Build and run the portable quantization benchmark** workflow. It builds the native tools, hashes the complete original C40 prior stream while retaining just the rows needed for the benchmark, and reproduces both the identity and a changed-weight control. Its `portable-c40` artifact contains the twelve window files and a Linux replay executable.
 
 Dispatch **Run a quantization experiment on the fixed quick benchmark** from the fork's main branch for each hypothesis. Supply the experiment branch or commit, the hypothesis and the exporter arguments. The workflow checks out a separate pinned evaluator, verifies the fixture manifest, rebuilds the native scorer, and records both commits, the fixture build, weights and a keep/discard decision. The equivalent local option is `loop.py --generator /path/to/experiment/candidate.py` with the same replay, suite and results arguments.
+
+The **Fit and validate a quantized correction to native byte probabilities** workflow uses a completed C40 build. It records the original transformer's probability of each possible next byte and groups the predictions by confidence and agreement with PPMd. Four discovery articles fit each table, two more choose its size and regularization, and the remaining six measure the frozen procedure. The lookup table occupies 8 or 24 bytes before executable packaging. An external test can reuse the table with `head_calibration.py --frozen` and a new disjoint C40 suite.
+
+## Starting a quantization-aware training run from the published model
+
+Run `python3 research/quant/qat_seed.py /scratch/release-plain.c5` in a NumPy environment. This converts the published NP2 weights into the plain v5 file read by the training tools. It checks each tensor's name, type, shape and byte values with the trainer's own v5 reader before publishing the file. The reference conversion produced 597 identical tensors and 3,765,762 bytes with SHA-256 `26e572080c240b6c8eb59a8dc8aab6ab6591efac695424f5942abf1d8fdde712`.
+
+With the [upstream training environment](../../training/README.md) assembled, its CPU conversion step can then produce the trainable checkpoint and the per-row integer ranges.
+
+```sh
+python3 training/tf/3_train/container_to_tch.py --container /scratch/release-plain.c5 \
+  --cfg training/tf/3_train/chain/06_qat.json --strict /scratch/strict.tch \
+  --qrow /scratch/row-ranges.npz --report /scratch/conversion.json
+```
+
+The upstream training chain used a rate coefficient of `2.7e-9` mean nats per model bit. With two stored copies, 487,298,491 scored targets, and a measured fraction α of a primary-head loss change transferred to the archive, the local break-even coefficient is `2 × ln(2) / (α × 487298491)`. The two prefix controls imply a range from `1.44e-9` to `3.80e-9`. This is a starting range for paired experiments. Rank exports using measured packaged weights, fresh articles and the native mixed-coder interval. [Prefix measurements](prefix-calibration.json)
