@@ -9,7 +9,9 @@ import time
 
 import numpy as np
 from allocation import export, np2
+from check_training_split import TRAINING_SHA
 from evaluate import BASELINE, FULL_TARGETS, REFERENCE_SHA, measure
+from paired_stats import summarize
 
 
 def digest(path):
@@ -17,16 +19,27 @@ def digest(path):
 
 
 def subset(source, output, start):
-    if (output/"manifest.json").exists(): return
+    parent_sha = digest(source/"manifest.json")
+    if (output/"manifest.json").exists():
+        previous = json.loads((output/"manifest.json").read_bytes())
+        if previous.get("parent_sha256") != parent_sha or previous.get("training_fold") != start:
+            raise ValueError("existing fold belongs to another training set")
+        return
     info=json.loads((source/"manifest.json").read_bytes())
-    if len(info["windows"])!=96:raise ValueError("expected the separate 96-document training set")
-    chosen=info["windows"][start::4]
+    windows = info["windows"]
+    if len(windows) == 96:
+        chosen = windows[start::4]
+    elif len(windows) == 1024 and parent_sha == TRAINING_SHA:
+        # Use the quarter and three-quarter points of each of 24 equal strata.
+        chosen = [windows[(4*i + start)*len(windows)//96] for i in range(24)]
+    else:
+        raise ValueError("expected 96 training articles or the verified full-corpus training set")
     output.mkdir(exist_ok=True)
     for w in chosen:
         src=source/w["file"];dst=output/w["file"]
         if digest(src)!=w["sha256"]:raise ValueError("fixture changed")
         if not dst.exists():shutil.copyfile(src,dst)
-    info.update(windows=chosen,parent_sha256=digest(source/"manifest.json"),training_fold=start)
+    info.update(windows=chosen,parent_sha256=parent_sha,training_fold=start)
     tmp=output/"manifest.tmp";tmp.write_text(json.dumps(info,indent=2)+"\n");tmp.replace(output/"manifest.json")
 
 
@@ -96,12 +109,29 @@ def run(a):
                     worst_training_split=max(cost(r,alpha),cost(other(r),alpha))) for r in best[:4]]
     (a.output/"selection.json").write_text(json.dumps(dict(transfer=alpha,
         transfer_source_sha256=digest(a.transfer),candidates=selection),indent=2)+"\n")
+    if a.held_out:
+        manifest = a.held_out / "manifest.json"
+        if digest(manifest) != "4aaae03b731808a4cb09524a4f759cf120648a1d3549a160f7dd3a40bce4d85d":
+            raise ValueError("unexpected 96-article evaluation set")
+        held = a.output / "held-out-96"
+        outcomes = []
+        for candidate in selection:
+            if time.time() >= a.until:
+                raise TimeoutError
+            model = root / (candidate["key"] + ".c5")
+            if digest(model) != candidate["sha256"]:
+                raise ValueError("candidate changed after selection")
+            trial = measure(a.exe, a.held_out, model, held, candidate["key"])
+            outcomes.append(summarize(trial, manifest, alpha))
+            print("held-out", candidate["key"], outcomes[-1]["projected_entry_delta_bytes"], flush=True)
+        (held/"summary.json").write_text(json.dumps(outcomes, indent=2)+"\n")
 
 
 if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
     for n in ("exe","training","transfer","output"):p.add_argument(n,type=Path)
     p.add_argument("--until",type=float,default=float("inf"))
+    p.add_argument("--held-out",type=Path,help="replay the four frozen finalists on the independent 96 articles")
     a=p.parse_args()
     try:run(a)
     except TimeoutError:print("search deadline reached",flush=True)
