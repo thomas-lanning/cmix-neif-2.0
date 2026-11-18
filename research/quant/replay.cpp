@@ -16,7 +16,13 @@ struct Row {
 static_assert(sizeof(Row) == 424, "fixture row layout");
 
 int main(int argc, char** argv) {
+#ifdef NEIF_HEAD_PROFILE
+  if (argc != 5) return 2;
+  FILE* features = std::fopen(argv[4], "wbx");
+  if (!features) return 2;
+#else
   if (argc != 4) return 2;
+#endif
   char* end = nullptr;
   fx2::research_fingerprint = std::strtoull(argv[2], &end, 16);
   if (!*argv[2] || *end) return 2;
@@ -39,6 +45,11 @@ int main(int argc, char** argv) {
     model.set_gelesen(row.score);
     model.step(row.token, row.prior, probs.data(), channels);
     if (row.score) {
+#ifdef NEIF_HEAD_PROFILE
+      if (model.hidden_size() != 192 ||
+          std::fwrite(model.last_hidden(), sizeof(float), 192, features) != 192 ||
+          std::fwrite(probs.data(), sizeof(float), 208, features) != 208) return 6;
+#endif
       double p = probs[row.target];
       if (!std::isfinite(p) || p < 0 || p > 1.00001) return 4;
       bits -= std::log2(std::max(p, 3e-8));
@@ -47,5 +58,8 @@ int main(int argc, char** argv) {
     ++rows;
   }
   if (!targets) return 5;
+#ifdef NEIF_HEAD_PROFILE
+  if (std::fclose(features) != 0) return 6;
+#endif
   std::printf("{\"rows\":%u,\"targets\":%u,\"bits\":%.12f}\n", rows, targets, bits);
 }
