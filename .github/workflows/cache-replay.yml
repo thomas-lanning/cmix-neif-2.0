@@ -1,5 +1,12 @@
 name: Benchmark semantic-cache quantization on matched native queries
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      schedule:
+        description: Three independent windows in the first 18M or 40M canonical bytes
+        type: choice
+        options: [full, early]
+        default: full
 permissions:
   contents: read
 jobs:
@@ -9,6 +16,7 @@ jobs:
     env:
       OPENBLAS_NUM_THREADS: 1
       OMP_NUM_THREADS: 1
+      SCHEDULE: ${{ inputs.schedule }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,7 +25,7 @@ jobs:
         run: |
           dest="$RUNNER_TEMP/cache-native"; mkdir "$dest"
           cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$dest/"
-          python3 research/quant/cache_trace.py "$dest" --decode-archive
+          python3 research/quant/cache_trace.py "$dest" --decode-archive "$SCHEDULE"
           make -C "$dest" -j4 prof_use CC=clang++-18 >"$dest/build.log" 2>&1 || { tail -80 "$dest/build.log"; exit 1; }
           cp weights-*.c5 "$dest/"
           python3 -m venv "$RUNNER_TEMP/env"
@@ -27,7 +35,7 @@ jobs:
           cd "$RUNNER_TEMP/cache-native"
           curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o published.archive
           python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload published.archive
-          "$RUNNER_TEMP/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/cache_study.py" ./cmix published.payload results --minutes 310
+          "$RUNNER_TEMP/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/cache_study.py" ./cmix published.payload results --minutes 310 --schedule "$SCHEDULE"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -36,4 +44,6 @@ jobs:
             ${{ runner.temp }}/cache-native/results/
             ${{ runner.temp }}/cache-native/native.log
             ${{ runner.temp }}/cache-native/build.log
+            ${{ runner.temp }}/cache-native/cache-*.bin
+            ${{ runner.temp }}/cache-native/output.cmix.temp
           retention-days: 14

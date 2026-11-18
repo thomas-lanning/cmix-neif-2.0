@@ -6,11 +6,12 @@ from pathlib import Path
 import struct
 
 import numpy as np
+import cache_metric
 
 CANDIDATE=np.dtype([("id","<u4"),("value","u1"),("original","i1",128),("packed","u1",64)])
 MIX=np.array([.05,.15,.30])
 METHODS=("original","int8","clip","angle","levels","two-blocks","four-blocks",
-         "project-quarter","project-half","project-three-quarters")
+         "project-quarter","project-half","project-three-quarters","metric-8","metric-32")
 
 
 def digest(path):
@@ -87,13 +88,18 @@ def learn(rows):
     for b in axes:
         if b[np.abs(b).argmax()]<0:b*=-1
     integer_axes=np.rint(127*axes/np.max(np.abs(axes),axis=1,keepdims=True)).astype(np.int8)
-    return dict(levels=np.rint(centers).astype(int).tolist(),axes=integer_axes.tolist())
+    return dict(levels=np.rint(centers).astype(int).tolist(),axes=integer_axes.tolist(),
+                metrics={f"metric-{n}":cache_metric.fit(rows,n) for n in (8,32)})
 
 
 def approximation(keys,query,method,model):
     v=keys.astype(np.float64)
     if method=="int8":return v,query
     if method=="original":return np.rint(v*(7/127)),query
+    if method.startswith("metric-"):
+        weights=np.asarray(model["metrics"][method])
+        scale=np.sqrt(np.repeat(weights,query.size//len(weights)))
+        return np.rint(v*(7/127))*scale,query*scale
     if method=="clip":return np.clip(np.rint(v*(8/127)),-8,7),query
     if method=="angle":
         candidates=np.clip(np.rint(v[None,:,:]*np.array([7,7.5,8,9,10])[:,None,None]/127),-8,7)
@@ -142,6 +148,8 @@ def measure(rows,model):
     base,_,_=evaluate(rows,"original",model)
     metrics={}
     for method in METHODS:
+        if method.startswith("metric-") and method not in model.get("metrics",{}):
+            continue
         scores,hit,overlap=evaluate(rows,method,model)
         delta=scores-base
         metrics[method]=dict(delta_bits_by_mixture=delta.sum(axis=0).tolist(),
