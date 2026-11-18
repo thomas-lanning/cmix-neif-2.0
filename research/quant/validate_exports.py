@@ -16,7 +16,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def run(replay, suite, exports, output):
+def run(replay, suite, exports, output, frozen_sha=None):
     if digest(suite/"manifest.json") != VALIDATION:
         raise ValueError("wrong follow-up suite")
     journals = list(exports.rglob("trials.jsonl"))
@@ -27,12 +27,18 @@ def run(replay, suite, exports, output):
         raise ValueError("missing original or mixed fixture results")
     frozen = sorted({r["candidate_sha256"] for r in trials
                      if max(r["search_proxy_bytes"], r["confirmation_proxy_bytes"]) < 0})
+    selection = "both quick splits improve"
+    if frozen_sha:
+        if frozen_sha not in {t["candidate_sha256"] for t in trials}:
+            raise ValueError("the explicitly selected hash has no original quick-screen result")
+        frozen = [frozen_sha]
+        selection = "one model hash fixed before this independent replay"
     models = {digest(p):p for p in exports.rglob("*.c5")}
     if not set(frozen).issubset(models):
         raise ValueError("missing a retained model")
     output.mkdir()
     (output/"frozen.json").write_text(json.dumps(dict(quick_suite=QUICK,journal_sha256=digest(journals[0]),
-                                                     candidates=frozen),indent=2)+"\n")
+                                                     selection=selection,candidates=frozen),indent=2)+"\n")
     alpha = json.loads(Path(__file__).with_name("prefix-calibration.json").read_bytes())["ranking_transfer"]
     outcomes = []
     for sha in frozen:
@@ -40,7 +46,7 @@ def run(replay, suite, exports, output):
         stats = summarize(result, suite/"manifest.json", alpha)
         outcomes.append(stats)
     (output/"summary.json").write_text(json.dumps(dict(validation_suite=VALIDATION,ranking_transfer=alpha,
-                                                       quick_trials=len(trials),outcomes=outcomes),indent=2)+"\n")
+                                                       quick_trials=len(trials),selection=selection,outcomes=outcomes),indent=2)+"\n")
     print(f"{len(trials)} quick trials, {len(outcomes)} independent replays")
 
 
@@ -48,5 +54,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     for name in ("replay","suite","exports","output"):
         p.add_argument(name, type=lambda s:Path(s).resolve())
+    p.add_argument("--frozen-sha")
     a = p.parse_args()
-    run(a.replay, a.suite, a.exports, a.output)
+    run(a.replay, a.suite, a.exports, a.output, a.frozen_sha)

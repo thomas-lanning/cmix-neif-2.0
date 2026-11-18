@@ -2,6 +2,9 @@ name: Validate frozen quantization exports on 48 independent articles
 on:
   workflow_dispatch:
     inputs:
+      frozen_sha:
+        description: Optional single hash preselected for an independent audit
+        type: string
       fixture_run:
         description: Successful portable benchmark built with include_validation
         type: string
@@ -16,6 +19,7 @@ on:
         options: [quantization-trial, cpu-fisher-trial, full-model-qat-trial, supervised-symbol-trial]
   workflow_call:
     inputs:
+      frozen_sha: {type: string, required: false}
       fixture_run: {type: string, required: true}
       exports_run: {type: string, required: true}
       artifact_name: {type: string, required: true}
@@ -49,6 +53,8 @@ jobs:
           run-id: ${{ inputs.exports_run }}
           path: ${{ runner.temp }}/exports
       - name: Freeze the qualifying exports and replay them on separate articles
+        env:
+          FROZEN_SHA: ${{ inputs.frozen_sha }}
         run: |
           set -euo pipefail
           d="$RUNNER_TEMP/independent"; mkdir "$d"
@@ -56,8 +62,10 @@ jobs:
           cp controller/research/quant/validate_exports.py evaluator/research/quant/
           evaluator/research/quant/build.sh "$d/replay"
           python3 -m venv "$d/env"; "$d/env/bin/pip" install --quiet numpy==2.2.6
+          explicit=()
+          if [[ -n "$FROZEN_SHA" ]]; then explicit=(--frozen-sha "$FROZEN_SHA"); fi
           "$d/env/bin/python" evaluator/research/quant/validate_exports.py "$d/replay" "$d/suite" \
-            "$RUNNER_TEMP/exports" "$d/results"
+            "$RUNNER_TEMP/exports" "$d/results" "${explicit[@]}"
           git -C evaluator rev-parse HEAD >"$d/results/evaluator-commit.txt"
           git -C controller rev-parse HEAD >"$d/results/controller-commit.txt"
       - uses: actions/upload-artifact@v4
