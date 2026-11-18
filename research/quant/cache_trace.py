@@ -12,7 +12,22 @@ def once(text,anchor,extra):
 
 
 root=Path(sys.argv[1])
-install(root,"sweep")
+if sys.argv[2:]==["--decode-archive"]:
+    runner=root/"src/runner.cpp"
+    source=once(runner.read_text(),"  ReadHeaderVocfix(data_in, output_bytes, &dictionary_used, &vocab);",
+        "  census_block_active = true;\n  isbn_check::after_at.an = true;\n"
+        "  ReadHeaderVocfix(data_in, output_bytes, &dictionary_used, &vocab);")
+    source=once(source,"    putc(byte, os);\n    sem_pb",
+        "    putc(byte, os);\n"
+        "    if (pos == 18000000 || pos == 30000000 || pos == 40000000) {\n"
+        "      if (fflush(os)) std::exit(4);\n"
+        "      if (pos == 40000000) std::exit(0);\n"
+        "    }\n    sem_pb")
+    runner.write_text(source)
+elif len(sys.argv)==2:
+    install(root,"sweep")
+else:
+    raise SystemExit("expected FRESH_TREE [--decode-archive]")
 p=root/"src/predictor.cpp"
 s=once(p.read_text(),"  TreffByteStart(strom_pb);",
        "  cache_trace::target(uint8_t(strom_pb),s.spos);\n  TreffByteStart(strom_pb);")

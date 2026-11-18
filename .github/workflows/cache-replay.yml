@@ -1,0 +1,39 @@
+name: Benchmark semantic-cache quantization on matched native queries
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the native query capture
+        run: |
+          dest="$RUNNER_TEMP/cache-native"; mkdir "$dest"
+          cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$dest/"
+          python3 research/quant/cache_trace.py "$dest" --decode-archive
+          make -C "$dest" -j4 prof_use CC=clang++-18 >"$dest/build.log" 2>&1 || { tail -80 "$dest/build.log"; exit 1; }
+          cp weights-*.c5 "$dest/"
+          python3 -m venv "$RUNNER_TEMP/env"
+          "$RUNNER_TEMP/env/bin/pip" install --quiet numpy==2.2.6
+      - name: Verify the published input and compare fixed-size keys
+        run: |
+          cd "$RUNNER_TEMP/cache-native"
+          curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o published.archive
+          python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload published.archive
+          "$RUNNER_TEMP/env/bin/python" -u "$GITHUB_WORKSPACE/research/quant/cache_study.py" ./cmix published.payload results --minutes 310
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cache-replay-results
+          path: |
+            ${{ runner.temp }}/cache-native/results/
+            ${{ runner.temp }}/cache-native/native.log
+            ${{ runner.temp }}/cache-native/build.log
+          retention-days: 14
