@@ -2,6 +2,11 @@ name: Measure the real mixed-coder payload of a validated quantization export
 on:
   workflow_dispatch:
     inputs:
+      purpose:
+        type: choice
+        options: [promotion, calibration]
+        description: Check a passing candidate or calibrate a prediction on a frozen candidate
+        default: promotion
       exports_run: {type: string, required: true, description: Run containing the original quick-screen model}
       artifact: {type: string, required: true, default: quantization-trial}
       validation_run: {type: string, required: true, description: Run containing independent-quantization-results}
@@ -29,6 +34,12 @@ jobs:
           name: independent-quantization-results
           run-id: ${{ inputs.validation_run }}
           path: ${{ runner.temp }}/validation
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: matched-interval-c40
+          run-id: 44248300047
+          path: ${{ runner.temp }}/matched
       - name: Build the profile-guided encoder and prepare the authenticated corpus
         run: |
           set -euo pipefail
@@ -36,6 +47,8 @@ jobs:
           cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/build/"
           python3 research/quant/instrument_prefix.py "$d/build" --no-events
           make -C "$d/build" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
+          tar -xzf "$RUNNER_TEMP/matched/c40-interval.tar.gz" -C "$d"
+          research/quant/build.sh "$d/replay"
           bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/tools" bed
           python3 research/fetch_corpus.py "$d/enwik9"
           cp dictionary/english.dic "$d/bed/.dict"
@@ -46,11 +59,12 @@ jobs:
       - name: Run the baseline control and actual candidate entropy coder
         env:
           MODEL: ${{ inputs.candidate_sha256 }}
+          PURPOSE: ${{ inputs.purpose }}
         run: |
           set -euo pipefail
           d="$RUNNER_TEMP/prefix"
           "$d/env/bin/python" -u research/quant/payload_trial.py "$d/build/cmix" "$d/bed/censpruef_strom.bin" \
-            "$d/published.archive" "$RUNNER_TEMP/quick-exports" "$RUNNER_TEMP/validation" "$d/result" "$MODEL"
+            "$d/published.archive" "$RUNNER_TEMP/quick-exports" "$RUNNER_TEMP/validation" "$d/result" "$MODEL" --purpose "$PURPOSE" --replay "$d/replay" --interval-suite "$d/interval"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

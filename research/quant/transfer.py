@@ -22,9 +22,14 @@ def fit(reference, candidate, suite, results):
     suite_sha=hashlib.sha256((suite/"manifest.json").read_bytes()).hexdigest()
     rows=[json.loads(row) for row in (results/"trials.jsonl").read_text().splitlines()]
     trial=next(r for r in rows if r["candidate_sha256"]==candidate_sha and r["suite_sha256"]==suite_sha)
+    return compare(trial,manifest,suite_sha,candidate_sha,checkpoints(reference),checkpoints(candidate))
+
+
+def compare(trial,manifest,suite_sha,candidate_sha,ref,alt):
+    if (trial["candidate_sha256"]!=candidate_sha or trial["suite_sha256"]!=suite_sha):
+        raise ValueError("candidate and fixture do not match the native interval")
     src_start,src_stop=manifest["source_interval"]
     start,stop=src_start-6,src_stop-6
-    ref,alt=checkpoints(reference),checkpoints(candidate)
     if ref.keys()!=alt.keys() or min(ref)!=start or max(ref)!=stop:
         raise ValueError("prefix checkpoints and fixture coordinates differ")
     delta={k:alt[k]-ref[k] for k in ref}

@@ -8,7 +8,8 @@ import shutil
 import subprocess
 import time
 
-from evaluate import BASELINE, model_id
+from evaluate import BASELINE, measure, model_id
+from transfer import compare
 from validate_exports import VALIDATION
 
 
@@ -17,12 +18,17 @@ def digest(path):
         return hashlib.file_digest(f,"sha256").hexdigest()
 
 
-def choose(exports, validation, sha):
+def choose(exports, validation, sha, purpose="promotion"):
     record=json.loads((validation/"summary.json").read_bytes())
     if record["validation_suite"]!=VALIDATION:
         raise ValueError("unknown independent validation fixture")
     row=next((r for r in record["outcomes"] if r["candidate_sha256"]==sha),None)
-    if not row or row["projected_entry_delta_bytes"]>=0:
+    if not row:
+        raise ValueError("candidate is missing an independent article evaluation")
+    frozen=json.loads((validation/"frozen.json").read_bytes())
+    if sha not in frozen["candidates"]:
+        raise ValueError("candidate was not frozen before independent evaluation")
+    if purpose=="promotion" and row["projected_entry_delta_bytes"]>=0:
         raise ValueError("candidate did not improve the independent article estimate")
     paths=[p for p in exports.rglob("*.c5") if digest(p)==sha]
     if not paths:
@@ -51,14 +57,18 @@ def run(a):
         raise ValueError("unexpected canonical corpus")
     if digest(a.archive)!="88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd":
         raise ValueError("unexpected reference archive")
-    candidate,qualifier=choose(a.exports,a.validation,a.sha)
+    candidate,qualifier=choose(a.exports,a.validation,a.sha,a.purpose)
     a.out.mkdir()
     cpu=min(os.sched_getaffinity(0));os.sched_setaffinity(0,{cpu})
     control=encode(a.exe,a.canonical,BASELINE,a.out/"control",True)
     actual=(a.out/"control/payload").read_bytes()[:-1]
     with a.archive.open("rb") as f:
         f.seek(-8,2);length,weights=struct.unpack("<II",f.read(8))
-        f.seek(-length-8,2);expected=f.read(len(actual))
+        f.seek(-length-8,2)
+        published=f.read(3367414)
+        if hashlib.sha256(published).hexdigest()!="52c208ff8ef5e0d0844d928e5a53d0b0411eb456edec3e230ad4d49f4b167a58":
+            raise ValueError("the measured baseline differs from the published body")
+        expected=published[:len(actual)]
     if weights!=BASELINE.stat().st_size or len(actual)<=4096 or actual!=expected:
         raise ValueError("the native evaluator's first 200k input bytes failed the published bitstream comparison")
     result=encode(a.exe,a.canonical,candidate,a.out/"candidate",False)
@@ -79,6 +89,15 @@ def run(a):
                 delta_article_portion=delta[20000000]-delta[15282108],
                 both_weight_copies_delta=2*(result["weight_bytes"]-control["weight_bytes"]),
                 end_checkpoint_canonical_bytes=20000000)
+    worker["purpose"]=a.purpose
+    if bool(a.replay)!=bool(a.interval_suite):raise ValueError("matched replay requires both executable and suite")
+    if a.interval_suite:
+        m=a.interval_suite/"manifest.json"
+        sha=digest(m)
+        if sha!="3f4052b3fab04511a2deab08d026437eb35709ab3084e95542982a5ce32f6ffd":
+            raise ValueError("unrecognized matched-interval fixture")
+        trial=measure(a.replay,a.interval_suite,candidate,a.out/"interval","matched-body")
+        worker["matched_primary_comparison"]=compare(trial,json.loads(m.read_bytes()),sha,a.sha,reference,observed)
     (a.out/"measurement.json").write_text(json.dumps(worker,indent=2)+"\n")
     print(json.dumps(worker),flush=True)
 
@@ -87,5 +106,8 @@ if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
     for name in ("exe","canonical","archive","exports","validation","out"):
         p.add_argument(name,type=lambda s:Path(s).resolve())
+    p.add_argument("--purpose",choices=("calibration","promotion"),default="promotion")
+    p.add_argument("--replay",type=lambda x:Path(x).resolve())
+    p.add_argument("--interval-suite",type=lambda x:Path(x).resolve())
     p.add_argument("sha")
     run(p.parse_args())
