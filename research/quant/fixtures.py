@@ -31,6 +31,9 @@ def main():
     parser.add_argument("--stream-plan", action="store_true", help="plan in stream coordinates directly from a native dump")
     parser.add_argument("--plan-only", action="store_true", help="write selected C40 prior ranges to the output JSON")
     args = parser.parse_args()
+    max_windows = 1024 if args.selection == "full" else 96
+    if not 12 <= args.windows <= max_windows or args.windows % 2:
+        parser.error(f"choose an even number of windows from 12 through {max_windows}")
     dump = args.scratch / "dump"
     priors = args.scratch / "priors"
     records, header, _ = dumpv2.lade(dump / "paket-zeilen.bin")
@@ -79,8 +82,6 @@ def main():
         last = int(positions[-1])
     starts = np.concatenate(doc_ids)
     src_at_start = np.concatenate(doc_positions)
-    if args.windows < 12 or args.windows > 96 or args.windows % 2:
-        raise ValueError("choose an even number of windows from 12 through 96")
     if len(starts) < args.windows:
         raise ValueError("insufficient document starts")
     # Stream byte 15,282,108 is the end of the title gate after the three setup articles.
