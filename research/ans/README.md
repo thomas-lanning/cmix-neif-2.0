@@ -61,3 +61,19 @@ A separate experiment encoded the signed weight symbols directly with one 15-sym
 python3 research/ans/weight_container.py repack weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5 /tmp/weights.ans
 python3 research/ans/weight_container.py unpack /tmp/weights.ans /tmp/recovered.raw
 ```
+
+### Mixing arithmetic and adaptive rANS inside the weight container
+
+A second experiment preserves the 20,349 bytes carried by NP2's neuron permutations. It uses rANS for selected signed integer matrices and continues to update NP2's arithmetic model with their true values. This keeps the original encoding context for the following tensors. For each selected matrix, the adaptive rANS reader derives symbol probabilities from previously recovered weights in the same row and column. The container stores the chosen traversal and model variant. All selection and framing bytes count.
+
+With 62 matrices selected, the complete weight file measured **3,739,290 bytes**, saving **5,339 bytes per embedded copy**. Its SHA-256 is `a13dd39b10b9bb1439acc3c084558599943810c9066ea946afb336c49dcf60a4`. The Python unpacker regenerated the entire published NP2 file byte for byte. Independent native readers for NP2 and the hybrid produced identical bytes for all 597 tensor slots, shapes, types and values. The native dump was 43,058,716 bytes with SHA-256 `5bb41b9479506c8906b4f5e48dc262270bca170421937182752693405c9ac6ba`. The executable size of the new reader also counts in a full entry.
+
+```bash
+c++ -O3 -std=c++17 research/ans/adaptive_matrix.cpp -o /tmp/neif-matrix
+python3 research/ans/hybrid_weights.py pack weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5 \
+  /tmp/weights.hybrid --matrix-model adaptive --matrix-tool /tmp/neif-matrix
+python3 research/ans/hybrid_weights.py unpack /tmp/weights.hybrid /tmp/recovered.c5 --matrix-tool /tmp/neif-matrix
+cmp /tmp/recovered.c5 weights-poc8m_w2048_tf2t3_pruned_v5k_np2.c5
+```
+
+To build the candidate, extract upstream commit `35d1957a` into a fresh directory and run `stage_hybrid.py FRESH_TREE HYBRID_FILE HYBRID_SHA256 MATRIX_TOOL`. Build that tree with the published release toolchain. The primary payload keeps the shipped binary arithmetic coder.

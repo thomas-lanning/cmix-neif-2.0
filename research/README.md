@@ -62,3 +62,7 @@ sha256sum /scratch/sign-fit.c5
 ```
 
 The fast benchmark uses a second group of 48 early articles, a 24-article suite matched to the actual archive interval, and a disjoint later-corpus suite for promotion. Offline fitting uses a separate 96-article suite. `research/quant/verify_priors.py c40 /scratch/c40` checks all seven C40 raster digests against the published eight-digit prefixes. Its `full` mode validates the complete trimmed priors and token streams against the upstream SHA-256 values.
+
+The 346-byte equivalent-weight candidate also matched the reference on all twelve later articles (40,305 targets). Through 20 million canonical input bytes, its independently encoded partial payload was byte-identical to the control. All 3,367,414 continuing bytes, including the five-byte header, matched the corresponding published archive bytes. The independently terminated partial file had one additional byte. The complete candidate encode and decode determine the final score.
+
+On the 24 matched articles, the stronger pruning control added 29,433 actual mixed-coder bytes over the measured interval, compared with an estimated increase of 39,343 bytes at the primary neural head. The loop uses their ratio, 0.748, for ranking. The smaller control added 501 actual bytes, and its two article halves disagreed on the sign of the estimated neural effect. Small projected improvements need actual archive tests.
