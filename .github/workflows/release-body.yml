@@ -27,6 +27,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Verify this fork's successful native release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ inputs.build_run }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN" | jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .head_repository.full_name == $repo and .event == "workflow_dispatch"
+            and .path == ".github/workflows/hybrid.yml" and .conclusion == "success"' >/dev/null
       - uses: actions/download-artifact@v4
         with:
           name: hybrid-release-check
@@ -39,11 +49,11 @@ jobs:
           result="$RUNNER_TEMP/release"
           if [[ "$PHASE" == encode ]]; then
             python3 research/fetch_corpus.py "$result/enwik9"
-            python3 research/ans/release_body.py encode "$result/release/comp9" "$result/assembly.json" "$result/real" --corpus "$result/enwik9"
+            python3 research/ans/release_body.py encode "$result/release/comp9" "$result/assembly.json" "$result/real" --weights-proof "$result/weights.json" --corpus "$result/enwik9"
           else
             curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$result/reference.archive"
             python3 research/early_decode.py "$result/reference.archive" "$result/release/comp9" "$result/combined.archive" >"$result/reassembly.json"
-            python3 research/ans/release_body.py decode "$result/combined.archive" "$result/assembly.json" "$result/real"
+            python3 research/ans/release_body.py decode "$result/combined.archive" "$result/assembly.json" "$result/real" --weights-proof "$result/weights.json"
           fi
       - uses: actions/upload-artifact@v4
         if: always()

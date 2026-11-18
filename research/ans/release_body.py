@@ -14,6 +14,20 @@ def digest(path):
         return hashlib.file_digest(file,"sha256").hexdigest()
 
 
+def validate_weight_proof(assembly,proof):
+    # Only the published NP2 and the separately established sign-equivalent
+    # NP2 have the same continuing-payload oracle used by this experiment.
+    originals={"729694cba4969b7d833686ed3f597ff04d3b226da849d5f8004ec020a0ed9563",
+               "78ef4ef61a6848e8a3c924eca62c87fe2110586ae8e5323fa303ec4d40d42eaa"}
+    if (proof.get("exact_np2_roundtrip") is not True or proof.get("original_sha256") not in originals
+        or proof.get("hybrid_sha256")!=assembly.get("weight_sha256")
+        or proof.get("hybrid_bytes")!=assembly.get("weight_bytes")
+        or assembly.get("reference_archive_sha256")!="88dd7087404122d010261e6855afd88875d34dde1f0539377d3e832fc0f6b3fd"
+        or assembly.get("payload_sha256")!="fc2d8c8f824e740ec8b06fa129316043c3876027449005d58df21d0f12254b57"
+        or assembly.get("payload_bytes")!=85417870):
+        raise ValueError("release lacks a matching proof for the original prediction stream")
+
+
 if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("phase",choices=("encode","decode"))
@@ -21,6 +35,7 @@ if __name__=="__main__":
     p.add_argument("assembly",type=Path)
     p.add_argument("output",type=Path)
     p.add_argument("--corpus",type=Path)
+    p.add_argument("--weights-proof",type=Path)
     p.add_argument("--timeout",type=int,default=12600)
     a=p.parse_args()
     assembly=json.loads(a.assembly.read_bytes())
@@ -29,7 +44,12 @@ if __name__=="__main__":
                 json.loads((here/"hybrid-sign-result.json").read_bytes())["assembly"],
                 json.loads((here/"residual-result.json").read_bytes())["assembly"],
                 json.loads((here/"chained-result.json").read_bytes())["assembly"]]
-    if assembly not in candidates:raise ValueError("release differs from the measured candidate packages")
+    if a.weights_proof:
+        validate_weight_proof(assembly,json.loads(a.weights_proof.read_bytes()))
+    elif assembly not in candidates:
+        raise ValueError("provide the matching weight proof for a new release")
+    expected_size=assembly["comp_bytes" if a.phase=="encode" else "archive_bytes"]
+    if a.executable.stat().st_size!=expected_size:raise ValueError("release file length changed")
     image_sha=digest(a.executable)
     if a.phase=="encode":
         if not a.corpus or digest(a.corpus)!="159b85351e5f76e60cbe32e04c677847a9ecba3adc79addab6f4c6c7aa3744bc":
