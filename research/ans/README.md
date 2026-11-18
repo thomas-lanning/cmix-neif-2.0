@@ -2,30 +2,33 @@
 
 The release uses a binary arithmetic coder. Its predictor assigns the probability of the next bit from the preceding decoded symbols. This experiment tests Jarek Duda's range asymmetric numeral systems (rANS) on exactly those probabilities and symbols. The encoder buffers a bounded block of decisions in forward order and feeds them to rANS in reverse. The decoder consumes each block in forward order, so an integrated decoder could regenerate the same probabilities from its model. [Release encoder](../../src/coder/encoder.cpp) · [Duda's ANS paper](https://arxiv.org/abs/1311.2540)
 
-## First measurement
+## First 131,072 coded decisions
 
-The first 131,072 entropy-coded decisions from the hash-verified upstream archive took **13,692 bytes** with the release arithmetic algorithm, including one byte to terminate this prefix independently. The preceding 13,691 bytes matched the published payload byte for byte. All eight rANS runs recovered every decision, consumed their entire payload and reached the expected final state. Counts include four bytes of length and eight bytes of state per rANS block. [Workflow and downloadable trace](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44201406171)
+The release-profiled encoder ran on the canonical 501,062,281-byte stream. Two builds, one with probability logging and one without, matched the first 42,693 emitted bytes against the published archive. The recorded trace has SHA-256 `95f04fea97d97423fae673febe8e79edce54d87973a3b4dd8ced3be8523a62ae`. Replaying the trace with arithmetic coding reproduced all 3,985 continuing bytes. Terminating this short sample independently gives **3,986 bytes**. The ideal length from the recorded probabilities is 3,985.22 bytes.
 
-| Decisions per block | Probability precision | rANS bytes | Difference from arithmetic |
-| ---: | ---: | ---: | ---: |
-| 4,096 | 12 bits | 14,060 | +368 |
-| 4,096 | 16, 24 or 32 bits | 14,059 | +367 |
-| 65,536 | 12, 16, 24 or 32 bits | 13,715 | +23 |
-| 131,072 | 24 bits (single-block replay of the downloaded trace) | 13,704 | +12 |
+| Method | Probability precision | Stored bytes | Difference from arithmetic |
+| --- | --- | ---: | ---: |
+| Two rANS blocks of 65,536 decisions | 12 bits | 4,010 | +24 |
+| Two rANS blocks of 65,536 decisions | 16, 24 or 32 bits | 4,008 | +22 |
+| One length-prefixed rANS block | 12 bits | 3,998 | +12 |
+| One length-prefixed rANS block | 16, 24 or 32 bits | 3,997 | +11 |
+| One continuous rANS state | 16, 24 or 32 bits | **3,991** | **+5** |
 
-The model's ideal length on these decisions, computed by summing the negative log probabilities, was 13,692.27 bytes. Encoding in a single block cost 12 bytes above arithmetic, exactly the size of the frame header and final state. Reproduce that row with `--precision 24 --block-size 131072`. The sample covers the start of the archive. A useful next comparison is a longer capture in the article body, measuring both compressed bytes and native single-core time. The Python replay measures byte counts and correctness. A full-codec trial also has to count changes in both executable sizes, regenerate probabilities in the decoder and round-trip `enwik9`.
+Each decoder recovered every decision and consumed its entire payload. In the continuous implementation, one six-byte state serves the entire stream. It reads probabilities and outcomes backwards in 65,536-decision chunks while encoding and decodes in forward order. For this sample its on-disk forward trace used 655,360 bytes and its reverse output spool used 3,985 bytes. The outer format must supply a stopping condition. The release already carries the decoded stream length. A prize trial would still need an integrated encoder and decoder, executable-size accounting and a full resource-qualified round trip.
+
+An earlier unprofiled decoder produced a 13,692-byte arithmetic result for a different sequence of decoded decisions. Re-encoding those decisions can reproduce the input bytes even when the model diverges. The benchmark now checks the independent encoding trace as well as arithmetic bytes. The release build settings and the public payload are part of the reference. [Build recipe](../../build_and_construct_comp.sh) · [Initial trace workflow](../../.github/workflows/ans.yml)
+
+The separate causal correction in `calibration.cpp` estimates the observed-to-expected error ratio from confidence and previous coded bits. Selecting among 54 settings on the first half of the verified trace saved four bytes on that half and two on the second. Actual packaged code costs would also count.
 
 ## Reproduction
 
-Run the fork's **Compare rANS against published arithmetic stream** workflow. It instruments a scratch copy of the release decoder, checks the archive hash, captures only decisions for which the codec consumed entropy and uploads `ans-prefix`. To repeat the byte comparison on that artifact, run
+The fork's **Compare rANS against published arithmetic stream** workflow builds the decoder with upstream's profile and checks the recorded probabilities and bits against the verified encoder trace hash. To test a downloaded trace locally, run
 
 ```sh
-python3 research/ans/compare.py /path/to/coded-events.bin
+python3 research/ans/compare.py /path/to/coded-events.bin --precision 12 16 24 32 --block-size 65536 262144
+c++ -O3 -std=c++17 research/ans/continuous.cpp -o /tmp/neif-continuous
+/tmp/neif-continuous /path/to/coded-events.bin /tmp/sample.rans 24
 ```
-
-The workflow additionally supplies `--original-payload` to verify the arithmetic bytes against the archive. The quantization suite uses the primary transformer's probabilities. Its results and this final mixed-bit trace answer different experimental questions.
-
-A separate causal probability correction in `calibration.cpp` estimates the observed-to-expected error ratio by confidence bucket and recent coded bits. On the 131,072-decision prefix, selecting among 54 configurations using the first half gave a zero-byte change on the second half. The best whole-prefix change was zero and the worst cost 31 bytes. The arithmetic control independently reproduced the 13,692-byte length. Article text provides a separate test of this model change.
 
 ## Lossless rANS for the weights
 
