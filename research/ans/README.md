@@ -51,6 +51,8 @@ c++ -O3 -std=c++17 research/ans/continuous.cpp -o /tmp/neif-continuous
 /tmp/neif-continuous /path/to/coded-events.bin /tmp/sample.rans 24
 ```
 
+To time the coder alone on an identical decision sequence, compile `research/ans/coder_speed.cpp` with `c++ -O3 -std=c++17` and pass the trace filename. The program alternates arithmetic and block rANS, checks every decoded decision, discards a warm-up pair and reports the median and median absolute deviation of nine measurements. Native whole-model timing includes the predictor and must be measured separately.
+
 ## Lossless rANS for the weights
 
 A separate experiment encoded the signed weight symbols directly with one 15-symbol rANS distribution per tensor. It stores frequency tables and metadata, compresses the remaining byte planes with DEFLATE, and reconstructs the rotary tables with the upstream algorithm. Its 3,796,587-byte container recovered all 597 tensor names, types, shapes and values exactly. The shipped NP2 container used 3,744,629 bytes, giving NP2 a 51,958-byte advantage per copy. NP2 also encodes information in neuron permutations. The rANS research container's SHA-256 is `f4ec71872a32afa0181a9f39864111ef3c49ed17386f8cf36c64e1c2f87fac7b`. The measurement covers the stored data. A submission would also price its native reader.
