@@ -1,0 +1,27 @@
+name: Build MLP activation profiler
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build native discovery-only profile replay
+        run: |
+          dest="$RUNNER_TEMP/activation"
+          mkdir -p "$dest/research"
+          cp -r src "$dest/"
+          cp -r research/quant "$dest/research/"
+          python3 research/quant/activations.py instrument "$dest"
+          bash "$dest/research/quant/build.sh" "$dest/profile"
+          cd "$dest"
+          tar czf activation-tool.tar.gz profile
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-activation-tool
+          path: ${{ runner.temp }}/activation/activation-tool.tar.gz
+          retention-days: 14
