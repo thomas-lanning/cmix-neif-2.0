@@ -1,0 +1,63 @@
+{
+  "training_trace": "11bbe9870fcc69cc0d5d31e6f2c23df3aac1a4142537ab72f944f171e1d12412",
+  "training_events": 1818638,
+  "model": {
+    "scope": "global",
+    "penalty": 32,
+    "stages": true,
+    "scale": 1024,
+    "coefficient_bytes": 10,
+    "coefficients": [
+      [
+        7,
+        5,
+        244,
+        816,
+        -85
+      ]
+    ]
+  },
+  "frozen_sha256": "ff50a69f1a5b2b9eb98c5f4969013692bd202d4b8ea578e2ea1c621bd700a9ac",
+  "scores": [
+    {
+      "start": 16000000,
+      "role": "training",
+      "events": 1818638,
+      "original_arithmetic_bytes": 22929,
+      "adjusted_arithmetic_bytes": 22915,
+      "trace_sha256": "11bbe9870fcc69cc0d5d31e6f2c23df3aac1a4142537ab72f944f171e1d12412"
+    },
+    {
+      "start": 20000000,
+      "role": "held-out",
+      "events": 1830839,
+      "original_arithmetic_bytes": 26480,
+      "adjusted_arithmetic_bytes": 26472,
+      "trace_sha256": "677e15bdd2b92faaa430e3f03041b43b25a9facad31e29faed9924dcf4ac4458"
+    },
+    {
+      "start": 26000000,
+      "role": "held-out",
+      "events": 1850644,
+      "original_arithmetic_bytes": 44478,
+      "adjusted_arithmetic_bytes": 44470,
+      "trace_sha256": "3521e26b4eee5846a7ef426498c6fc24c56e111be5e7d0d4fd3e591222a4c999"
+    },
+    {
+      "start": 34000000,
+      "role": "held-out",
+      "events": 1836591,
+      "original_arithmetic_bytes": 48035,
+      "adjusted_arithmetic_bytes": 48026,
+      "trace_sha256": "0992472e89831f7143c25a592d1af2276ed423ca0a856e325e52c349e15b0b9a"
+    },
+    {
+      "start": 42000000,
+      "role": "held-out",
+      "events": 1836505,
+      "original_arithmetic_bytes": 47356,
+      "adjusted_arithmetic_bytes": 47352,
+      "trace_sha256": "4ab69d1695c43495700038bd0332214ee8f051f9e26befd40fab01eab038e1b9"
+    }
+  ]
+}

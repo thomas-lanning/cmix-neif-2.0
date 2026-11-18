@@ -1,0 +1,62 @@
+name: Encode and independently decode 20M with the frozen final mixer
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  roundtrip:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the symmetric coder and regenerate canonical input
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/mixer"; mkdir -p "$d"/{build,tools,bed,encode,decode}
+          cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/build/"
+          python3 research/ans/native_mixer.py "$d/build" --bounded
+          make -C "$d/build" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/tools" bed
+          python3 research/fetch_corpus.py "$d/enwik9"
+          cp dictionary/english.dic "$d/bed/.dict"; cp src/readalike_prepr/data/new_article_order "$d/bed/.new_article_order"
+          (cd "$d/bed" && "$d/tools/cmix_bed" -e "$d/enwik9" out >bed.log 2>&1)
+          echo "c35d3073eeba70f22a2e08a50202b53eb95466e3e9f1f2702f6f9b3f96fd8718  $d/bed/censpruef_strom.bin" | sha256sum -c -
+          for phase in encode decode; do cp weights-*.c5 "$d/$phase/"; cp dictionary/english.dic "$d/$phase/.dict"; done
+          (cd "$d" && curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o published.archive && python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload published.archive)
+      - name: Measure native arithmetic bytes at each checkpoint
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/mixer"; cd "$d/encode"
+          core=$(python3 -c 'import os;print(min(os.sched_getaffinity(0)))')
+          export NEIF_CANDIDATE_FNV=aec368ac6a568632 NEIF_CANONICAL_STREAM="$d/bed/censpruef_strom.bin"
+          /usr/bin/time -v taskset -c "$core" "$d/build/cmix" -e "$NEIF_CANONICAL_STREAM" payload >native.log 2>&1
+          cmp -n 2870258 "$d/published.payload" payload
+          sha256sum payload >payload.sha256
+          wc -c payload
+          cat prefix-sizes.tsv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fitted-mixer-encode
+          path: |
+            ${{ runner.temp }}/mixer/encode/payload*
+            ${{ runner.temp }}/mixer/encode/*.log
+            ${{ runner.temp }}/mixer/encode/*.tsv
+            ${{ runner.temp }}/mixer/build.log
+      - name: Recover the independent canonical prefix with a new decoder process
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/mixer"; cd "$d/decode"
+          core=$(python3 -c 'import os;print(min(os.sched_getaffinity(0)))')
+          export NEIF_CANDIDATE_FNV=aec368ac6a568632
+          /usr/bin/time -v taskset -c "$core" "$d/build/cmix" -d ../encode/payload output >native.log 2>&1
+          echo 'e3f8084643cb36eac12231108fefc98056d9e415dd7d66fd077d07a6f8796359  output.cmix.temp' | sha256sum -c -
+          sha256sum output.cmix.temp >canonical.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fitted-mixer-decode
+          path: |
+            ${{ runner.temp }}/mixer/decode/native.log
+            ${{ runner.temp }}/mixer/decode/canonical.sha256
