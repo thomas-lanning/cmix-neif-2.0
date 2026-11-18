@@ -1,11 +1,20 @@
 name: Capture and verify actual entropy decisions in six article-body spans
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      cohort:
+        description: Frozen calibration batch
+        type: choice
+        options: [initial, transfer]
+        default: initial
 permissions:
   contents: read
 jobs:
   capture:
     runs-on: ubuntu-24.04
     timeout-minutes: 150
+    env:
+      COHORT: ${{ inputs.cohort }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,10 +24,10 @@ jobs:
           set -euo pipefail
           d="$RUNNER_TEMP/calibration"; mkdir "$d"
           cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/"
-          python3 research/ans/decoder_calibration.py "$d"
+          python3 research/ans/decoder_calibration.py "$d" "$COHORT"
           make -C "$d" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
           cp weights-*.c5 "$d/"
-      - name: Decode and authenticate 18 million canonical bytes
+      - name: Decode and authenticate the selected canonical prefix
         run: |
           set -euo pipefail
           d="$RUNNER_TEMP/calibration"
@@ -26,10 +35,26 @@ jobs:
           curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o published.archive
           python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload published.archive
           ./cmix -d published.payload output >native.log 2>&1
-          echo "ab41f3c44d66fc49d7d9eba31c5ee3e2794fc99e2d3b6fe9d1f431af16f977a7  output.cmix.temp" | sha256sum -c -
-          test "$(wc -c <output.cmix.temp)" -eq 18000000
+          if [[ "$COHORT" == transfer ]]; then
+            bytes=20000000; digest=e3f8084643cb36eac12231108fefc98056d9e415dd7d66fd077d07a6f8796359
+          else
+            bytes=18000000; digest=ab41f3c44d66fc49d7d9eba31c5ee3e2794fc99e2d3b6fe9d1f431af16f977a7
+          fi
+          echo "$digest  output.cmix.temp" | sha256sum -c -
+          test "$(wc -c <output.cmix.temp)" -eq "$bytes"
           sha256sum events-*.bin >streams.sha256
           head -c 4000000 published.payload >oracle-prefix.bin
+      - name: Replay the fixed calibrators on the new batch
+        if: inputs.cohort == 'transfer'
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/calibration"
+          python3 -m venv "$d/replay-env"
+          "$d/replay-env/bin/pip" install numpy==2.2.6 numba==0.61.2
+          c++ -std=c++17 -O3 research/ans/entropy_span.cpp -o "$d/span-score"
+          "$d/replay-env/bin/python" research/ans/transfer_spans.py "$d/span-score" "$d" \
+            research/ans/final-bit-result.json 138 140 142 146 148 150 >"$d/transfer.json"
+          cat "$d/transfer.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -40,4 +65,5 @@ jobs:
             ${{ runner.temp }}/calibration/oracle-prefix.bin
             ${{ runner.temp }}/calibration/build.log
             ${{ runner.temp }}/calibration/native.log
+            ${{ runner.temp }}/calibration/transfer.json
           retention-days: 30

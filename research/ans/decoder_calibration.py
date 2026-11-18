@@ -5,7 +5,9 @@ import sys
 from install import replace
 
 BLOCK=131072
-GROUPS=(118,120,122,128,132,136)
+COHORTS={"initial": ((118,120,122,128,132,136),18000000),
+         "transfer": ((138,140,142,146,148,150),20000000)}
+GROUPS,limit=COHORTS[sys.argv[2] if len(sys.argv)>2 else "initial"]
 here=Path(sys.argv[1])
 runner=here/"src/runner.cpp"
 source=replace(runner.read_text(),"  ReadHeaderVocfix(data_in, output_bytes, &dictionary_used, &vocab);",
@@ -21,6 +23,7 @@ source=replace(source,"    putc(byte, os);\n    sem_pb","""    putc(byte, os);
       std::exit(0);
     }
     sem_pb""")
+source=source.replace("if (pos == 17999999)",f"if (pos == {limit-1})")
 runner.write_text("#include <cstdint>\nextern uint8_t calibration_previous;\nextern void calibration_block(unsigned);\n"+source)
 file=here/"src/coder/decoder.cpp"
 code=replace(file.read_text(),"  const unsigned int xmid = floor_stage::Mid(x1_, x2_, p_->SemCorrect(",
