@@ -36,5 +36,17 @@
     "reassembled_archive_sha256": "64178e42355758bd7596b084396f21b8a38cacd4143bbb062850c63e21551525",
     "self_extracting_prefix_equal": true
   },
-  "entry_delta_with_reference_payload": -9454
+  "entry_delta_with_reference_payload": -9454,
+  "ordinary_body_verification": {
+    "run": 44245619036,
+    "decoder": {
+      "phase": "decode",
+      "executable_sha256": "64178e42355758bd7596b084396f21b8a38cacd4143bbb062850c63e21551525",
+      "one_logical_cpu": 0,
+      "canonical_checkpoint_bytes": 20000000,
+      "matched_bytes": 20000000,
+      "matched_sha256": "e3f8084643cb36eac12231108fefc98056d9e415dd7d66fd077d07a6f8796359",
+      "elapsed_seconds": 6613.081998954
+    }
+  }
 }
