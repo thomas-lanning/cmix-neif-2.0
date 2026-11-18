@@ -47,6 +47,7 @@ jobs:
           options=(--compact-priors "$d/priors/selected.float16" --compact-plan "$d/priors/raw-plan.json")
           "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/suite" full "${options[@]}"
           "$d/env/bin/python" research/quant/fixtures.py "$d" "$d/sealed96" full --windows 96 --midpoints --exclude-manifest "$d/suite/manifest.json" "${options[@]}"
+          echo "0fcf667419736ce4a37f692ee8af308ba9018f1e9c695e18b858ac1024f9c245  $d/suite/manifest.json" | sha256sum -c -
           research/quant/build.sh "$d/replay"
           "$d/env/bin/python" research/quant/evaluate.py "$d/replay" "$d/suite" weights-*.c5 "$d/control" --label identity
           tar -C "$d" -czf "$d/late-enwik9-benchmark.tar.gz" ./suite ./sealed96

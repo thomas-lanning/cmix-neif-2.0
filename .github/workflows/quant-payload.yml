@@ -1,0 +1,64 @@
+name: Measure the real mixed-coder payload of a validated quantization export
+on:
+  workflow_dispatch:
+    inputs:
+      exports_run: {type: string, required: true, description: Run containing the original quick-screen model}
+      artifact: {type: string, required: true, default: quantization-trial}
+      validation_run: {type: string, required: true, description: Run containing independent-quantization-results}
+      candidate_sha256: {type: string, required: true, description: Frozen exported model SHA-256}
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prefix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 220
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: ${{ inputs.artifact }}
+          run-id: ${{ inputs.exports_run }}
+          path: ${{ runner.temp }}/quick-exports
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: independent-quantization-results
+          run-id: ${{ inputs.validation_run }}
+          path: ${{ runner.temp }}/validation
+      - name: Build the profile-guided encoder and prepare the authenticated corpus
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/prefix"; mkdir -p "$d"/{build,bed,tools}
+          cp -r src makefile encoder_split.lds runtime_exports.map pgo_data "$d/build/"
+          python3 research/quant/instrument_prefix.py "$d/build" --no-events
+          make -C "$d/build" -j4 prof_use CC=clang++-18 >"$d/build.log" 2>&1 || { tail -60 "$d/build.log"; exit 1; }
+          bash training/tf/1_dump/build_dump_tools.sh "$PWD" "$d/tools" bed
+          python3 research/fetch_corpus.py "$d/enwik9"
+          cp dictionary/english.dic "$d/bed/.dict"
+          cp src/readalike_prepr/data/new_article_order "$d/bed/.new_article_order"
+          (cd "$d/bed" && "$d/tools/cmix_bed" -e "$d/enwik9" out >bed.log 2>&1)
+          curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$d/published.archive"
+          python3 -m venv "$d/env"; "$d/env/bin/pip" install --quiet numpy==2.2.6
+      - name: Run the baseline control and actual candidate entropy coder
+        env:
+          MODEL: ${{ inputs.candidate_sha256 }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/prefix"
+          "$d/env/bin/python" -u research/quant/payload_trial.py "$d/build/cmix" "$d/bed/censpruef_strom.bin" \
+            "$d/published.archive" "$RUNNER_TEMP/quick-exports" "$RUNNER_TEMP/validation" "$d/result" "$MODEL"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: actual-quantization-payload
+          path: |
+            ${{ runner.temp }}/prefix/result/measurement.json
+            ${{ runner.temp }}/prefix/result/*/codec.log
+            ${{ runner.temp }}/prefix/result/candidate/prefix-sizes.tsv
+            ${{ runner.temp }}/prefix/result/candidate/payload
+            ${{ runner.temp }}/prefix/build.log
+          retention-days: 30
