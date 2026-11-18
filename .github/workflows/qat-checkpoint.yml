@@ -1,11 +1,24 @@
 name: Recover and verify the trainable checkpoint on CPU
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      fit_rows:
+        description: Fit row sensitivities using CPU reference kernels and run native replay
+        type: boolean
+        default: false
+      fixture_run:
+        description: Run containing the portable-c40 artifact
+        type: string
+      profile_run:
+        description: Run containing the quantized-head native profiles
+        type: string
 permissions:
   contents: read
+  actions: read
 jobs:
   convert:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       OMP_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "1"
@@ -62,4 +75,38 @@ jobs:
             ${{ runner.temp }}/checkpoint/*.json
             ${{ runner.temp }}/checkpoint/files.sha256
             ${{ runner.temp }}/checkpoint/environment.txt
+          retention-days: 30
+      - uses: actions/download-artifact@v4
+        if: inputs.fit_rows
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.fixture_run }}
+          name: portable-c40
+          path: ${{ runner.temp }}/fixture-artifact
+      - uses: actions/download-artifact@v4
+        if: inputs.fit_rows
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.profile_run }}
+          name: quantized-head
+          path: ${{ runner.temp }}/profile-artifact
+      - name: Differentiate the full quantized model and replay three exported allocations
+        if: inputs.fit_rows
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/fisher"; mkdir "$d"
+          export TFT_TREE="$RUNNER_TEMP/trainer" PKG="$RUNNER_TEMP/checkpoint"
+          source training/tf/3_train/tree/exp.env
+          tar -C "$d" -xzf "$RUNNER_TEMP/fixture-artifact/c40-kit.tar.gz"
+          tar -C "$d" -xzf "$RUNNER_TEMP/profile-artifact/profile.tar.gz"
+          echo "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b  $d/suite/manifest.json" | sha256sum -c -
+          "$RUNNER_TEMP/env/bin/python" -u research/quant/cpu_fisher.py \
+            "$RUNNER_TEMP/checkpoint" "$d/suite" "$d/profile" "$d/replay" "$d/results" | tee "$d/fit.log"
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.fit_rows
+        with:
+          name: cpu-fisher-trial
+          path: |
+            ${{ runner.temp }}/fisher/fit.log
+            ${{ runner.temp }}/fisher/results/
           retention-days: 30
