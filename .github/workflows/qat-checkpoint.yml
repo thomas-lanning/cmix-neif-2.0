@@ -12,6 +12,9 @@ on:
       profile_run:
         description: Run containing the quantized-head native profiles
         type: string
+      refit_from:
+        description: Optional completed cpu-fisher-trial run with frozen row choices
+        type: string
 permissions:
   contents: read
   actions: read
@@ -77,7 +80,7 @@ jobs:
             ${{ runner.temp }}/checkpoint/environment.txt
           retention-days: 30
       - uses: actions/download-artifact@v4
-        if: inputs.fit_rows
+        if: inputs.fit_rows || inputs.refit_from != ''
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.fixture_run }}
@@ -109,4 +112,30 @@ jobs:
           path: |
             ${{ runner.temp }}/fisher/fit.log
             ${{ runner.temp }}/fisher/results/
+          retention-days: 30
+      - uses: actions/download-artifact@v4
+        if: inputs.refit_from != ''
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.refit_from }}
+          name: cpu-fisher-trial
+          path: ${{ runner.temp }}/frozen-fisher
+      - name: Train discrete row weights and scales through the full CPU model
+        if: inputs.refit_from != ''
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/qat-rows"; mkdir "$d"
+          export TFT_TREE="$RUNNER_TEMP/trainer" PKG="$RUNNER_TEMP/checkpoint"
+          source training/tf/3_train/tree/exp.env
+          tar -C "$d" -xzf "$RUNNER_TEMP/fixture-artifact/c40-kit.tar.gz"
+          echo "77974c6afc23485b60b0a8444b3060e465fcc9ae5b65cf1c75c5a0090b29753b  $d/suite/manifest.json" | sha256sum -c -
+          "$RUNNER_TEMP/env/bin/python" -u research/quant/qat_rows.py "$RUNNER_TEMP/checkpoint" \
+            "$RUNNER_TEMP/frozen-fisher/results/ranking.json" "$d/suite" "$d/replay" "$d/results" | tee "$d/fit.log"
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.refit_from != ''
+        with:
+          name: full-model-qat-trial
+          path: |
+            ${{ runner.temp }}/qat-rows/fit.log
+            ${{ runner.temp }}/qat-rows/results/
           retention-days: 30
