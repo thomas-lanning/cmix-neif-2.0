@@ -34,10 +34,15 @@ def fit(reference, candidate, suite, results):
     windows=trial["bits_per_target_delta_by_window"]
     split_primary=[statistics.mean(half)*n/8 for half in (windows[::2],windows[1::2])]
     alpha=mixed/primary if abs(primary)>=1 else None
+    full_stream_bytes=501_062_281
+    # Keep the observed payload change from the start of the archive through
+    # the final checkpoint. Only the unseen suffix is extrapolated.
+    stream_projection=delta[stop]+(full_stream_bytes-stop)*mixed/(stop-start)
     return dict(candidate_sha256=candidate_sha,suite_sha256=suite_sha,stream_interval=[start,stop],
                 scored_nonterminal_targets=n,mixed_payload_delta=mixed,estimated_primary_delta=primary,
                 transfer=alpha,checkpoint_deltas=delta,windows=len(manifest["windows"]),
-                primary_split_estimates=split_primary)
+                primary_split_estimates=split_primary,stream_byte_extrapolation=stream_projection,
+                projected_entry_delta=trial["twice_weight_delta"]+stream_projection)
 
 
 def adjusted(r, alpha):

@@ -57,6 +57,22 @@ def transform(tensors,group,method,threshold):
     return int(changed)
 
 
+def export_one(group,method,threshold,output):
+    if output.exists(): raise ValueError("choose a fresh export path")
+    if hashlib.sha256(BASELINE.read_bytes()).hexdigest()!=REFERENCE_SHA: raise ValueError("published weights changed")
+    bank=np2.read_container(str(BASELINE))
+    changed=transform(bank,group,method,threshold)
+    blob,_,permuted=np2.encode_np(bank,True,np2.np_groups(bank,True,True),True)
+    if not all(t.same(v) for t,v in zip(bank,permuted,strict=True)):
+        raise ValueError("neuron order changed during packing")
+    with tempfile.TemporaryDirectory(dir=output.parent) as td:
+        path=Path(td)/"model.c5"; path.write_bytes(blob)
+        if not all(t.same(v) for t,v in zip(bank,np2.read_container(str(path)),strict=True)):
+            raise ValueError("decoded integer tensors or scales differ")
+        path.replace(output)
+    print(json.dumps(dict(rows=changed,bytes=len(blob),sha256=hashlib.sha256(blob).hexdigest())))
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ("replay","suite","output"): p.add_argument(name,type=Path)
@@ -94,4 +110,12 @@ def main():
                 print("screened",key,r["search_proxy_bytes"],r["confirmation_proxy_bytes"],flush=True)
 
 
-if __name__=="__main__": main()
+if __name__=="__main__":
+    import sys
+    if sys.argv[1:2]==["export"]:
+        p=argparse.ArgumentParser(description="Rebuild one unchanged-order NP2 row-sign candidate")
+        p.add_argument("group",choices=("tables","input","embeddings","prior","attention","all"))
+        p.add_argument("method",choices=("sign","magnitude","fit"))
+        p.add_argument("threshold",type=float);p.add_argument("output",type=Path)
+        a=p.parse_args(sys.argv[2:]);export_one(a.group,a.method,a.threshold,a.output.resolve())
+    else: main()
