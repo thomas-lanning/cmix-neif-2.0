@@ -1,6 +1,12 @@
 name: Compare frozen predictors on 40M preprocessed Wikipedia bytes
 on:
   workflow_dispatch:
+    inputs:
+      variant:
+        description: Frozen candidate to compare with upstream
+        type: choice
+        options: [fitted-mixer, frozen-layer]
+        default: fitted-mixer
   workflow_call:
     inputs:
       candidate_sha256: {type: string, required: true}
@@ -16,7 +22,7 @@ jobs:
       matrix:
         role: [reference, candidate]
     env:
-      VARIANT: ${{ matrix.role == 'reference' && 'reference' || inputs.candidate_sha256 != '' && 'weights' || 'fitted-mixer' }}
+      VARIANT: ${{ matrix.role == 'reference' && 'reference' || inputs.candidate_sha256 != '' && 'weights' || inputs.variant || 'fitted-mixer' }}
       MODEL: ${{ inputs.candidate_sha256 }}
     steps:
       - uses: actions/checkout@v4
@@ -53,14 +59,19 @@ jobs:
           d="$RUNNER_TEMP/large"
           cd "$d/native"
           args=()
+          python=python3
           if [[ "$VARIANT" == reference ]]; then
             curl -fLsS --retry 3 https://marwoelk.de/cmix-neif-2.0/archive9 -o "$d/reference.archive"
             python3 "$GITHUB_WORKSPACE/research/ans/probe.py" payload "$d/reference.archive"
             args=(--published-payload "$PWD/published.payload")
           elif [[ "$VARIANT" == weights ]]; then
             args=(--sha "$MODEL" --exports "$RUNNER_TEMP/exports" --short "$RUNNER_TEMP/short/result")
+          elif [[ "$VARIANT" == frozen-layer ]]; then
+            python3 -m venv "$d/env"
+            python="$d/env/bin/python"
+            "$python" -m pip install --quiet numpy==2.2.6
           fi
-          python3 "$GITHUB_WORKSPACE/research/quant/large_prefix.py" encode "$VARIANT" "$d/bed/censpruef_strom.bin" "${args[@]}"
+          "$python" "$GITHUB_WORKSPACE/research/quant/large_prefix.py" encode "$VARIANT" "$d/bed/censpruef_strom.bin" "${args[@]}"
           if [[ "$VARIANT" != reference ]]; then tar -czf decoder-kit.tar.gz cmix weights-*.c5 payload; fi
       - uses: actions/upload-artifact@v4
         if: always()

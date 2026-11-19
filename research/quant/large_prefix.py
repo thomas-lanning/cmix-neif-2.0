@@ -36,6 +36,7 @@ def invoke(operation, source, destination, fnv, canonical=None):
 def encode(args):
     model = BASELINE
     stable = None
+    expected_prefix_hash = FITTED_STABLE_SHA
     if args.variant == "weights":
         short = json.loads((args.short / "measurement.json").read_bytes())
         candidate = short["candidate"]
@@ -48,6 +49,14 @@ def encode(args):
         stable = payload.read_bytes()[:-1]
     elif digest(model) != REFERENCE_SHA:
         raise ValueError("unknown upstream weights")
+    elif args.variant == "frozen-layer":
+        from allocation import export, np2
+        receipt = json.loads(Path(__file__).with_name("frozen-layer-20m.json").read_bytes())
+        model = Path("layer-export.c5")
+        export(np2.read_container(str(BASELINE)), receipt["specs"], model)
+        if digest(model) != receipt["model_sha256"] or receipt["short_input_bytes"] != SHORT:
+            raise ValueError("layer export differs from the frozen 20M candidate")
+        expected_prefix_hash = receipt["short_stable_sha256"]
     sha, fnv, weight_bytes = model_id(model)
     shutil.copyfile(model, BASELINE.name)
     if digest(args.canonical) != CANONICAL_SHA:
@@ -63,9 +72,9 @@ def encode(args):
         with args.published_payload.open("rb") as reference:
             if payload[:-1] != reference.read(len(payload)-1):
                 raise ValueError("40M control differs from the published arithmetic payload")
-    elif args.variant == "fitted-mixer":
-        if hashlib.sha256(prefix).hexdigest() != FITTED_STABLE_SHA:
-            raise ValueError("the frozen fitted mixer failed to reproduce its 20M result")
+    elif args.variant in ("fitted-mixer", "frozen-layer"):
+        if hashlib.sha256(prefix).hexdigest() != expected_prefix_hash:
+            raise ValueError("the frozen candidate failed to reproduce its 20M result")
     elif prefix != stable:
         raise ValueError("the frozen weights failed to reproduce their 20M payload")
     report = dict(variant=args.variant, weight_sha256=sha, weight_bytes=weight_bytes,
@@ -109,7 +118,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(required=True)
     enc = subs.add_parser("encode")
-    enc.add_argument("variant", choices=["reference", "fitted-mixer", "weights"])
+    enc.add_argument("variant", choices=["reference", "fitted-mixer", "frozen-layer", "weights"])
     enc.add_argument("canonical", type=Path)
     enc.add_argument("--published-payload", type=Path)
     enc.add_argument("--exports", type=Path)

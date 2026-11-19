@@ -1,0 +1,28 @@
+{
+    "specs": [
+        {
+            "kind": "rows",
+            "family": "down",
+            "layers": [
+                14
+            ],
+            "fraction": 1.0,
+            "levels": 3
+        },
+        {
+            "kind": "rows",
+            "family": "down",
+            "layers": [
+                2
+            ],
+            "fraction": 0.125,
+            "levels": 3
+        }
+    ],
+    "model_sha256": "d8f623a1dbd478bbb143998665388cba5fcf166ce7ced910d7e8c6de0b51ed7f",
+    "short_stable_bytes": 3367569,
+    "short_stable_sha256": "ccc1955105006757681e5d39a4b27c7ce6763f5192a37a289f7f74873a11a19e",
+    "short_input_bytes": 20000000,
+    "measured_payload_delta": 155,
+    "projected_entry_delta": -11229.931342006133
+}
