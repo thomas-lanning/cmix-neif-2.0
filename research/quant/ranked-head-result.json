@@ -1,0 +1,189 @@
+{
+  "frozen": {
+    "rank": 1,
+    "gain": 0.125,
+    "bytes_per_copy": 281,
+    "sha256": "0bf553cf01143694d00dc1f21170b0c269c52e3ddb27b58c5cec2e4a6d8e9574",
+    "fit_articles": 768,
+    "selection_articles": 128,
+    "fit_targets": 2056085,
+    "selection_targets": 347883,
+    "transfer": 0.7481182829674354,
+    "candidates": [
+      {
+        "rank": 0,
+        "gain": 0.0,
+        "bytes_per_copy": 0,
+        "estimated_entry_delta": 0.0
+      },
+      {
+        "rank": 1,
+        "gain": 0.125,
+        "bytes_per_copy": 281,
+        "estimated_entry_delta": -1860.2821709616646
+      },
+      {
+        "rank": 1,
+        "gain": 0.5,
+        "bytes_per_copy": 281,
+        "estimated_entry_delta": 2635.2468044099737
+      },
+      {
+        "rank": 1,
+        "gain": 1.0,
+        "bytes_per_copy": 281,
+        "estimated_entry_delta": 35025.445083916406
+      },
+      {
+        "rank": 4,
+        "gain": 0.125,
+        "bytes_per_copy": 1121,
+        "estimated_entry_delta": -1186.1027863469944
+      },
+      {
+        "rank": 4,
+        "gain": 0.5,
+        "bytes_per_copy": 1121,
+        "estimated_entry_delta": 16034.040784090117
+      },
+      {
+        "rank": 4,
+        "gain": 1.0,
+        "bytes_per_copy": 1121,
+        "estimated_entry_delta": 101314.30204732693
+      },
+      {
+        "rank": 16,
+        "gain": 0.125,
+        "bytes_per_copy": 4481,
+        "estimated_entry_delta": 4344.882327071647
+      },
+      {
+        "rank": 16,
+        "gain": 0.5,
+        "bytes_per_copy": 4481,
+        "estimated_entry_delta": 58956.0504686636
+      },
+      {
+        "rank": 16,
+        "gain": 1.0,
+        "bytes_per_copy": 4481,
+        "estimated_entry_delta": 289414.0815757985
+      },
+      {
+        "rank": 32,
+        "gain": 0.125,
+        "bytes_per_copy": 8961,
+        "estimated_entry_delta": 12523.07074574511
+      },
+      {
+        "rank": 32,
+        "gain": 0.5,
+        "bytes_per_copy": 8961,
+        "estimated_entry_delta": 93953.36303102695
+      },
+      {
+        "rank": 32,
+        "gain": 1.0,
+        "bytes_per_copy": 8961,
+        "estimated_entry_delta": 427020.5400549384
+      }
+    ]
+  },
+  "confirmation_articles": 128,
+  "confirmation_targets": 340950,
+  "primary_head_byte_delta": -4735.149105529543,
+  "estimated_entry_delta": -2980.4516184235495,
+  "article_bootstrap_95": [
+    -4115.901393849924,
+    -1854.850465764789
+  ],
+  "improved_articles": 89,
+  "confirmation_scope": "Disjoint within this experiment; all 1024 articles belong to the existing training fixture collection. Payload gains are estimates for the primary head scaled by the recorded mixer transfer. The raw factor bytes are counted twice; compiled reader size is unmeasured.",
+  "preceding_five_level_refit": {
+    "frozen": "down-quarter",
+    "validation": {
+      "candidate_sha256": "943458a8610dc28e1e3e21ecafb5bf6e69ac9ce347f315d3c601e547b8b8a944",
+      "suite_sha256": "f335fbaf2bac000d71325e02a4ab8cfd2273c851e76d8d7c0f00dce769e3abe1",
+      "documents": 24,
+      "targets": 70563,
+      "improved_documents": 0,
+      "tied_documents": 0,
+      "bits_per_target_equal_document": 0.03214511577358303,
+      "bits_per_target_token_weighted": 0.030668905092597516,
+      "weight_delta_both_copies": -163708,
+      "measured_transfer_assumption": 0.7481182829674354,
+      "projected_entry_delta_bytes": 1301132.5112762651,
+      "article_resampling_95_percentile_bytes": [
+        1129458.3587436632,
+        1470879.6928943037
+      ]
+    },
+    "screen": {
+      "candidate_sha256": "943458a8610dc28e1e3e21ecafb5bf6e69ac9ce347f315d3c601e547b8b8a944",
+      "suite_sha256": "72719e08431c028739e10addb2e4364a0ee36ec6a3c97cb9b3f75e832825bece",
+      "documents": 24,
+      "targets": 51786,
+      "improved_documents": 0,
+      "tied_documents": 0,
+      "bits_per_target_equal_document": 0.03390350872386086,
+      "bits_per_target_token_weighted": 0.034329507490971266,
+      "weight_delta_both_copies": -163708,
+      "measured_transfer_assumption": 0.7481182829674354,
+      "projected_entry_delta_bytes": 1381261.7989245716,
+      "article_resampling_95_percentile_bytes": [
+        1162084.9137280174,
+        1590428.3384924538
+      ]
+    },
+    "arms": {
+      "both-half": 5371233.834832042,
+      "down-quarter": 1381261.7989245716,
+      "both-full": 14267415.887303507
+    }
+  },
+  "previous_width_screens": [
+    {
+      "family": "distill",
+      "models_audited": 16,
+      "best_by_worse_split": {
+        "spec": {
+          "kind": "distill",
+          "family": "mlp",
+          "fraction": 0.0625,
+          "layers": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "steps": 1024
+        },
+        "two_copy_weight_change": -26440,
+        "first_split_estimate": 519857.21407496044,
+        "second_split_estimate": 368503.86294004414
+      }
+    },
+    {
+      "family": "calibrated",
+      "models_audited": 32,
+      "best_by_worse_split": {
+        "spec": {
+          "kind": "prune",
+          "family": "down",
+          "layers": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "fraction": 0.03125,
+          "compensate": true
+        },
+        "two_copy_weight_change": -15536,
+        "first_split_estimate": 141746.2845398099,
+        "second_split_estimate": 150992.76295834125
+      }
+    }
+  ]
+}
