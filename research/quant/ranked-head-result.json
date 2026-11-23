@@ -185,5 +185,15 @@
         "second_split_estimate": 150992.76295834125
       }
     }
-  ]
+  ],
+  "native_prefix_trial": {
+    "input_bytes": 20000000,
+    "control_stable_bytes": 3367414,
+    "candidate_stable_bytes": 3367426,
+    "actual_payload_delta": 12,
+    "roundtrip": true,
+    "table_bytes_per_copy": 281,
+    "decoded_sha256": "e3f8084643cb36eac12231108fefc98056d9e415dd7d66fd077d07a6f8796359",
+    "decision": "Discard the rank-one correction after the matched 20-million-byte prefix. The payload grew before accounting for the added predictor."
+  }
 }
