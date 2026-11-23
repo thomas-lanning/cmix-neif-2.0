@@ -83,3 +83,17 @@ To build the candidate, extract upstream commit `35d1957a` into a fresh director
 The release build produced a **4,038,356-byte compressor**. Its packed decoder is 185,018 bytes. Combining that decoder, the new weights and the published arithmetic payload produced an 89,342,186-byte self-extracting archive. This gives **93,380,542 bytes** if the fresh encode reproduces the complete published payload, a net saving of **8,414 bytes** including the new code. Reassembly from the original compressor reproduced the published archive SHA-256 exactly. A fresh candidate encode and an independent decode of the reassembled archive are running. [Package measurements and digests](hybrid-result.json)
 
 An independent build reproduced those exact compressor and archive hashes. Combining the same rANS packing with the 346-byte equivalent-row NP2 change reduced the weight file to 3,738,808 bytes. The new compressor measures 4,037,873 bytes. Its self-extracting archive with the published payload measures 89,341,703 bytes, giving **93,379,576 bytes** conditional on payload equality. A separate native process decoded the first 200,000 canonical bytes correctly from that archive. [Independent hybrid build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44231300543) · [Combined build](https://github.com/thomas-lanning/cmix-neif-2.0/actions/runs/44233847013) · [Combined measurements](hybrid-sign-result.json)
+
+## Learning from shared prediction errors
+
+On the two discovery spans, the largest group of costly unanimous mistakes was in the middle three bits after a lowercase letter. The spelling experiment tracked the last 16 bytes that followed each previously seen lowercase prefix. It adjusted the mixer's probabilities only when all four stages agreed and at least two earlier continuations matched the known bits. A paired control used identical events and support counts while omitting the direction of the historical vote.
+
+Build and run the screen with the verified mixer traces, the canonical preprocessed stream and a fresh output directory.
+
+```sh
+c++ -O3 -std=c++17 research/ans/shared_error_words.cpp -o /tmp/shared-error-words
+OPENBLAS_NUM_THREADS=1 python3 research/ans/shared_error_words.py \
+  /scratch/mixer-spans /scratch/censpruef_strom.bin /tmp/shared-error-words /scratch/word-trial
+```
+
+The reader checks the corpus and trace hashes and requires a unique alignment before using byte history. Parameters are frozen after the first two spans. Scoring uses actual arithmetic byte counts on the remaining three. [Frozen models and results](shared-error-word-result.json)

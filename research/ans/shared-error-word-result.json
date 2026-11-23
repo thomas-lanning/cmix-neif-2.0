@@ -1,0 +1,115 @@
+{
+  "frozen": {
+    "ablation": {
+      "coefficients": [
+        12,
+        0,
+        3
+      ],
+      "penalty": 512.0,
+      "stored_bytes_per_copy": 6,
+      "selection_bytes": 26479
+    },
+    "spelling": {
+      "coefficients": [
+        11,
+        7,
+        1,
+        -16
+      ],
+      "penalty": 512.0,
+      "stored_bytes_per_copy": 8,
+      "selection_bytes": 26480
+    }
+  },
+  "frozen_sha256": "012472bea138e3941d99ce35a8ed72aae89181f86f43a5d643341c91152e7209",
+  "fit_start": 16000000,
+  "selection_start": 20000000,
+  "selection_control_bytes": 26480,
+  "test_input_bytes": 786432,
+  "test_control_bytes": 139869,
+  "test_delta_bytes": {
+    "ablation": 0,
+    "spelling": -1
+  },
+  "eligible_events": 90579,
+  "spans": [
+    {
+      "start": 26000000,
+      "events": 1850644,
+      "trace_sha256": "3521e26b4eee5846a7ef426498c6fc24c56e111be5e7d0d4fd3e591222a4c999",
+      "targeted_events": 69555,
+      "eligible_events": 28684,
+      "control_bytes": 44478,
+      "models": {
+        "ablation": {
+          "arithmetic_bytes": 44478,
+          "originally_wrong": 1268,
+          "wrong_bit_delta_bits": -4.229249375940203,
+          "correct_bit_delta_bits": 4.362916582035362,
+          "delta_bytes": 0
+        },
+        "spelling": {
+          "arithmetic_bytes": 44478,
+          "originally_wrong": 1268,
+          "wrong_bit_delta_bits": -8.582655597991186,
+          "correct_bit_delta_bits": 7.956848828665303,
+          "delta_bytes": 0
+        }
+      }
+    },
+    {
+      "start": 34000000,
+      "events": 1836591,
+      "trace_sha256": "0992472e89831f7143c25a592d1af2276ed423ca0a856e325e52c349e15b0b9a",
+      "targeted_events": 77978,
+      "eligible_events": 24507,
+      "control_bytes": 48035,
+      "models": {
+        "ablation": {
+          "arithmetic_bytes": 48035,
+          "originally_wrong": 2421,
+          "wrong_bit_delta_bits": -6.642733013225412,
+          "correct_bit_delta_bits": 7.38183642439461,
+          "delta_bytes": 0
+        },
+        "spelling": {
+          "arithmetic_bytes": 48035,
+          "originally_wrong": 2421,
+          "wrong_bit_delta_bits": -13.12230135801065,
+          "correct_bit_delta_bits": 13.168057737352719,
+          "delta_bytes": 0
+        }
+      }
+    },
+    {
+      "start": 42000000,
+      "events": 1836505,
+      "trace_sha256": "4ab69d1695c43495700038bd0332214ee8f051f9e26befd40fab01eab038e1b9",
+      "targeted_events": 101023,
+      "eligible_events": 37388,
+      "control_bytes": 47356,
+      "models": {
+        "ablation": {
+          "arithmetic_bytes": 47356,
+          "originally_wrong": 1989,
+          "wrong_bit_delta_bits": -6.502431751152151,
+          "correct_bit_delta_bits": 5.865631504460703,
+          "delta_bytes": 0
+        },
+        "spelling": {
+          "arithmetic_bytes": 47355,
+          "originally_wrong": 1989,
+          "wrong_bit_delta_bits": -12.699330762316638,
+          "correct_bit_delta_bits": 12.87977439496074,
+          "delta_bytes": -1
+        }
+      }
+    }
+  ],
+  "method": "Compare identical eligible events with and without the direction of the word-continuation vote. Features use only preceding canonical bytes and the current bit prefix. The lookup table starts empty at fixed 1 MiB boundaries.",
+  "measurement": "Separate restarts of the original arithmetic coder at each span. The three later spans were excluded from fitting and selection for this trial. The project previously examined their aggregate losses.",
+  "decision": "Discard this spelling correction. It tied the unchanged coder at selection, reduced the three later coded spans by one byte in total, and would require eight coefficient bytes per model copy plus code.",
+  "shared_wrong_bit_delta_bits": -34.40428771831847,
+  "shared_correct_bit_delta_bits": 34.00468096097876
+}
