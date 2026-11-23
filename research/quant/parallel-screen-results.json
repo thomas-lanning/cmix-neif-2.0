@@ -1,0 +1,73 @@
+{
+  "source_model": "729694cba4969b7d833686ed3f597ff04d3b226da849d5f8004ec020a0ed9563",
+  "native_profile_binary_sha256": "8fadab3ed99634dd29fd6b58121e4c01a54b41744673ced0cdb9072b5c450b06",
+  "training_manifest_sha256": "91ef7f5fc3f13bfdcaea71c02cab85edd6197c10adf716cb34ad864c1867c481",
+  "heldout_manifest_sha256": "4aaae03b731808a4cb09524a4f759cf120648a1d3549a160f7dd3a40bce4d85d",
+  "physical_workers": 12,
+  "native_profile_comparison": {
+    "articles": 21,
+    "targets": 50598,
+    "serial_seconds": 24.869551556999795,
+    "parallel_seconds": 3.420196671038866,
+    "warm_read_seconds": 0.018036282039247453,
+    "matched_profile_hashes_and_native_loss": true
+  },
+  "changed_weight_evaluation": {
+    "articles": 24,
+    "serial_total_s": 54.42455340898596,
+    "parallel_total_s": 7.744254381977953,
+    "serial_candidate_s": 26.902377227088436,
+    "parallel_candidate_s": 3.560822617029771,
+    "model_sha256": "d8f623a1dbd478bbb143998665388cba5fcf166ce7ced910d7e8c6de0b51ed7f",
+    "identical_reference_and_candidate": true
+  },
+  "full_context_benchmark": {
+    "articles": 1120,
+    "settings": 18,
+    "warm_end_to_end_seconds": 6.43,
+    "matched_table_and_all_article_scores": true,
+    "cold_end_to_end_seconds": 217.2899486970855,
+    "original_serial_end_to_end_seconds": 1428.1515953540802,
+    "matched_original_serial": true
+  },
+  "static_context_result": {
+    "fit_articles": 896,
+    "selection_articles": 128,
+    "heldout_articles": 96,
+    "heldout_targets": 255401,
+    "frozen_sha256": "4ca6a7a161893f6f7e7a8fc78ca86651228dfe25ea827a7e224cde36d426c607",
+    "bits_per_target": -8.863088241140447e-05,
+    "bits_per_target_95": [
+      -0.00014469764351404628,
+      -3.419455151228138e-05
+    ],
+    "estimated_primary_head_bytes": -5398.7119068844795,
+    "raw_table_bytes_per_copy": 13312,
+    "xz_preset9_bytes_per_copy": 5600
+  },
+  "frequency": {
+    "settings": 9,
+    "selection_articles": 128,
+    "confirmation_articles": 896,
+    "confirmation_targets": 2408047,
+    "estimated_primary_head_bytes": -1525.4372312750518,
+    "bits_per_target_95": [
+      -3.978095055388156e-05,
+      -1.0185529461756439e-05
+    ],
+    "elapsed_seconds": 4.099272055900656
+  },
+  "retrieval": {
+    "settings": 6,
+    "selection_articles": 128,
+    "confirmation_articles": 896,
+    "confirmation_targets": 2408047,
+    "estimated_primary_head_bytes": 16626.122613472784,
+    "bits_per_target_95": [
+      0.00022558473238767264,
+      0.00031870819423929176
+    ],
+    "elapsed_seconds": 26.493256104993634
+  },
+  "byte_estimates": "Primary-head projections use 487,298,491 targets. They do not measure the arithmetic-coded archive or its executable."
+}

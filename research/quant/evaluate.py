@@ -1,12 +1,15 @@
 """Compare one trusted same-geometry NP2 export with the published model."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import statistics
 import subprocess
 import tempfile
+from threading import Lock
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -29,15 +32,34 @@ def model_id(path):
     return digest(data), format(fnv, "016x"), len(data)
 
 
+def article_pool(cores):
+    """Pin each worker and its native subprocess to one of the selected Linux CPUs."""
+    if not cores or len(set(cores)) != len(cores) or not set(cores) <= os.sched_getaffinity(0):
+        raise ValueError("provide distinct allowed CPUs")
+    remaining = iter(cores)
+    lock = Lock()
+
+    def pin():
+        with lock:
+            core = next(remaining)
+        os.sched_setaffinity(0, {core})
+
+    return ThreadPoolExecutor(max_workers=len(cores), initializer=pin)
+
+
 def replay(executable, path, model, windows, suite):
-    result = []
-    for w in windows:
+    def one(w):
         command = [str(executable), str(path), model[1], str(suite / w["file"])]
         got = json.loads(subprocess.check_output(command, text=True, timeout=300))
         if (got["rows"], got["targets"]) != (w["rows"], w["targets"]):
             raise ValueError("replay counts disagree with the pinned fixture")
-        result.append(got)
-    return result
+        return got
+
+    selected = os.environ.get("NEIF_REPLAY_CPUS")
+    if selected:
+        with article_pool([int(core) for core in selected.split(",")]) as pool:
+            return list(pool.map(one, windows))
+    return list(map(one, windows))
 
 
 def measure(exe, suite, candidate, store, label):

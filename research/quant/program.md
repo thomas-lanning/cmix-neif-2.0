@@ -32,6 +32,23 @@ For a release trial, run `stage_release.py CANDIDATE SHA256 FRESH_TREE`, build t
 
 ## Running repeated experiments
 
+For experiments that change how the published head's probabilities are used, replay each article once and share its native predictions across candidates. On Linux with Python 3.11+ and NumPy, run the following with one logical CPU from each available physical core and a fresh output directory for each sweep.
+
+```sh
+research/quant/build.sh /scratch/head-profile-replay --head-profile
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 research/quant/context_screen.py \
+  /scratch/article-splits /scratch/head-profile-replay /scratch/release.c5 \
+  /scratch/native-profile-cache /scratch/context-run-01 --cores 4 5 6 7
+```
+
+The split directory contains `training/manifest.json` (1,024 articles) and `sealed96/manifest.json` (96 disjoint articles). The screen fits three context tables on 896 articles, compares 18 settings on 128, writes the selected table and its SHA-256, then measures that frozen choice on the 96. Each cache entry is tied to the fixture, executable and model hashes. Reuse the cache path on later runs. Parallelism is across independent article replays. A full archive trial still uses the sequential codec and counts the packaged predictor.
+
+`article_adaptation.py` takes the same paths and cores. Pass `--experiment frequency` to correct probabilities using earlier symbol counts in the article, or `--experiment retrieval` to mix in the next symbols of similar earlier passages. Both experiments choose their settings on 128 training articles and check that choice on the other 896. Each predictor reads only completed blocks of 32 scored positions.
+
+For weight-changing experiments, set `NEIF_REPLAY_CPUS=4,5,6,7` when running the existing evaluator or a campaign that calls it. It evaluates the changed model on independent articles in parallel and collects results in manifest order. Leave the variable unset for serial replay.
+
+The 12-core timing records compare serial, cold parallel and cached runs on identical articles, along with the frozen table hash, confirmation losses and a separate comparison on changed weights. [Benchmark measurements](parallel-screen-results.json)
+
 This setup follows Karpathy's editable experiment program and fixed evaluator. A command-based controller can read the printed `METRIC` lines. The same campaign can also run from a coding agent with these instructions. [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) · [pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) · [Claude Autoresearch](https://github.com/uditgoenka/autoresearch)
 
 Start the agent in a dedicated experiment branch with this file as its instruction. Give it the replay binary, fixture directory, persistent results directory and a budget of trials or wall time. Reproduce the identity result and run a zero-fraction export once with `loop.py --fractions 0` to measure the cost of reserializing the published tensors. Record the starting commit and both controls in the campaign log.
