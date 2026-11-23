@@ -1,0 +1,90 @@
+{
+  "settings": 9,
+  "description": "Five signed values for increasing fractions of MLP rows may save enough stored bytes to offset poorer predictions. Compare the real two-copy weight saving with calibrated native-head loss.",
+  "alphabet": [
+    -2,
+    -1,
+    0,
+    1,
+    2
+  ],
+  "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "discovery_articles": 24,
+  "confirmation_articles": 24,
+  "projection_transfer": 0.7481182829674354,
+  "choice": "down-0.25",
+  "candidate_sha256": "030fbafcb8629238b81f3e2e2cc3277adbaee813ede9b24d93b1a96f4d181074",
+  "arms": {
+    "down-0.25": {
+      "weight_delta": -166604,
+      "projected_entry_delta": 765216.919676404
+    },
+    "down-0.5": {
+      "weight_delta": -360268,
+      "projected_entry_delta": 1453127.292002698
+    },
+    "down-1.0": {
+      "weight_delta": -752206,
+      "projected_entry_delta": 3279541.639517144
+    },
+    "up-0.25": {
+      "weight_delta": -133838,
+      "projected_entry_delta": 896262.0898438198
+    },
+    "up-0.5": {
+      "weight_delta": -369106,
+      "projected_entry_delta": 1938450.7307378724
+    },
+    "up-1.0": {
+      "weight_delta": -831246,
+      "projected_entry_delta": 4364502.861979025
+    },
+    "down-up-0.25": {
+      "weight_delta": -316954,
+      "projected_entry_delta": 1673438.5774970483
+    },
+    "down-up-0.5": {
+      "weight_delta": -741198,
+      "projected_entry_delta": 3458731.712594715
+    },
+    "down-up-1.0": {
+      "weight_delta": -1584798,
+      "projected_entry_delta": 7820996.08242232
+    }
+  },
+  "confirmation": {
+    "candidate_sha256": "030fbafcb8629238b81f3e2e2cc3277adbaee813ede9b24d93b1a96f4d181074",
+    "suite_sha256": "f335fbaf2bac000d71325e02a4ab8cfd2273c851e76d8d7c0f00dce769e3abe1",
+    "documents": 24,
+    "targets": 70563,
+    "improved_documents": 0,
+    "tied_documents": 0,
+    "bits_per_target_equal_document": 0.022323627030765455,
+    "bits_per_target_token_weighted": 0.022499722474774705,
+    "weight_delta_both_copies": -166604,
+    "measured_transfer_assumption": 0.7481182829674354,
+    "projected_entry_delta_bytes": 850675.0623501362,
+    "article_resampling_95_percentile_bytes": [
+      731248.7654835295,
+      964403.07308033
+    ]
+  },
+  "elapsed_seconds_from_first_export": 653.0882551670074
+}

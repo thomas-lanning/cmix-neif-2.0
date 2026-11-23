@@ -49,6 +49,8 @@ For weight-changing experiments, set `NEIF_REPLAY_CPUS=4,5,6,7` when running the
 
 The 12-core timing records compare serial, cold parallel and cached runs on identical articles, along with the frozen table hash, confirmation losses and a separate comparison on changed weights. [Benchmark measurements](parallel-screen-results.json)
 
+The five-level weight sweep applied `allocation.export` with `levels=2` across all 16 MLP blocks. It tested row fractions of one quarter, one half and one for the up projections, down projections and both together. It selected one model on 24 articles using the measured two-copy weight difference and calibrated prediction loss, then checked it on 24 separate articles. [Weight sizes and confirmation results](five-level-screen-results.json)
+
 This setup follows Karpathy's editable experiment program and fixed evaluator. A command-based controller can read the printed `METRIC` lines. The same campaign can also run from a coding agent with these instructions. [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) · [pi-autoresearch](https://github.com/davebcn87/pi-autoresearch) · [Claude Autoresearch](https://github.com/uditgoenka/autoresearch)
 
 Start the agent in a dedicated experiment branch with this file as its instruction. Give it the replay binary, fixture directory, persistent results directory and a budget of trials or wall time. Reproduce the identity result and run a zero-fraction export once with `loop.py --fractions 0` to measure the cost of reserializing the published tensors. Record the starting commit and both controls in the campaign log.
