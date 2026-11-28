@@ -1,0 +1,32 @@
+{
+  "teacher": "cmix-neif-2.0",
+  "fit_articles": 48,
+  "test_articles": 12,
+  "method": "Native transformer prediction replay on 12 separate articles, using actual packed model sizes. Projected entry changes exclude final cmix mixing, code and runtime.",
+  "models": [
+    {
+      "architecture": "fully shared",
+      "weight_bytes_each": 2628149,
+      "packed_sha256": "3507508a2f5e0c165bc137667aeff8ec7054af4441a01023e0ca172421718f61",
+      "round_tripped": true,
+      "two_copy_saving_vs_combined": 2178482,
+      "projected_full_entry_delta_vs_release": {
+        "search_proxy_bytes": 30362617.175266538,
+        "confirmation_proxy_bytes": 31305017.84787396,
+        "proxy_delta_bytes": 30833817.51157025
+      }
+    },
+    {
+      "architecture": "768 shared, 256 private",
+      "weight_bytes_each": 2929729,
+      "packed_sha256": "8ad8e20269d7a902db294be46d4f66e3c22581aedaecb858c2702ad1f96c747c",
+      "round_tripped": true,
+      "two_copy_saving_vs_combined": 1575322,
+      "projected_full_entry_delta_vs_release": {
+        "search_proxy_bytes": 23208296.42258426,
+        "confirmation_proxy_bytes": 23820956.467591025,
+        "proxy_delta_bytes": 23514626.445087645
+      }
+    }
+  ]
+}
